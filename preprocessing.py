@@ -51,7 +51,7 @@ if __name__ == '__main__':
         lat_dim = len(f.latitude)
         lon_dim = len(f.longitude)
 
-    num_partitions = hours_total / period_of_influence
+    num_partitions = int(hours_total / period_of_influence)
 
     #-----------------------------------------------------------------------------
     # Create an array of random numbers from to (num_partitions - 1)
