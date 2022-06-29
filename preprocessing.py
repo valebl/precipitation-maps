@@ -5,6 +5,7 @@
 import h5py
 import numpy as np
 import xarray as xr
+import sys
 
 #------------
 # Functions
@@ -40,7 +41,8 @@ def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n
 
 if __name__ == '__main__':
 
-    path = '/m100_work/ICT22_ESP_0/vblasone/SLICED/'
+    #path = '/m100_work/ICT22_ESP_0/vblasone/SLICED/'
+    path = str(sys.argv[1])
     year_start = 2001
     year_end = 2016
     period_of_influence = 24 # hours
