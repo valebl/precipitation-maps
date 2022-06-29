@@ -24,7 +24,7 @@ def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n
             for idx_rand in idx_normal_to_idx_rand: # len(idx_normal_to_idx_rand) num_partitions-1
                 output[idx_rand-1,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1], data_split[idx]),axis=0)
                 idx += 1
-        lstart += 5
+        l_start += 5
         with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
             f.write(f'\nFinished preprocessing of {v}.')
     
