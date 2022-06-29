@@ -4,6 +4,7 @@
 
 import h5py
 import numpy as np
+import xarray as xr
 
 #------------
 # Functions
@@ -21,7 +22,7 @@ def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n
             data_split = np.array_split(data, num_partitions)   # list
             for idx in range(1,num_partitions):
                 idx_rand = idx_normal_to_idx_rand[idx]
-                output[idx_rand,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1] + data_split[idx]),axis=0)
+                output[idx_rand,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1], data_split[idx]),axis=0)
         lstart += 5
         with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'w') as f:
             f.write(f'\nFinished preprocessing of {v}.')
