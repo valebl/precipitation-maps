@@ -63,7 +63,7 @@ if __name__ == '__main__':
     idx_rand_to_idx_normal = np.argsort(idx_normal_to_idx_rand)     # idx_rand_to_idx_normal[j] = idx of cell j in normal array
 
     np.savetxt(path + 'idx_normal_to_idx_rand.csv', idx_normal_to_idx_rand, delimiter=',') # to be able to replicate it
-    np.savetxt('idx_rand_to_idx_normal.csv', idx_rand_to_idx_normal, delimiter=',')
+    np.savetxt(path + 'idx_rand_to_idx_normal.csv', idx_rand_to_idx_normal, delimiter=',')
 
     with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'w') as f:
         f.write(f'\nStarting the preprocessing.')
