@@ -1,0 +1,70 @@
+#--------------------------------
+# Import the relevant packages
+#--------------------------------
+
+import glob
+import random
+import sys
+import h5py
+import psutil
+import gc
+import numpy as np
+import xarray as xr
+import pickle as pkl
+
+
+#------------
+# Functions
+#------------
+
+def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n_levels, n_variables, idx_normal_to_idx_rand):
+
+    output = np.zeros((num_partitions-1, period_of_influence*2, lat_dim, lon_dim, n_levels*n_variables))
+    l_start = 0
+    for v in ['q', 't', 'u', 'v', 'z']:
+        with xr.open_dataset(path + f'{v}_sliced.nc') as file:
+            data = file[v].values
+            s = data.shape
+            data = data.reshape(s[0], s[2], s[3], s[1])         # (t_dim, lat_dim, lon_dim, n_levels)
+            data_split = np.array_split(data, num_partitions)   # list
+            for idx in range(1,num_partitions):
+                idx_rand = idx_normal_to_idx_rand[idx]
+                output[idx_rand,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1] + data_split[idx]),axis=0)
+        lstart += 5
+    
+    with h5py.File(path+'output.hdf5', 'w') as f:
+        f.create_dataset('output', output.shape, data=output)
+
+
+if __name__ == '__main__':
+
+    path = '/m100_work/ICT22_ESP_0/vblasone/SLICED/'
+    year_start = 2001
+    year_end = 2016
+    period_of_influence = 24
+    hours_total = 140256
+    n_levels = 5
+    n_variables = 5
+
+    num_partitions = 140256 / period_of_influence
+
+    with xr.open_dataset(f"{path}/q_sliced.nc") as f:
+        lat_dim = len(f.latitude)
+        lon_dim = len(f.longitude)
+
+    #-----------------------------------------------------------------------------
+    # Create an array of random numbers from to (num_partitions - 1)
+    #-----------------------------------------------------------------------------
+
+    idx = range(1,num_partitions)
+    idx_normal_to_idx_rand = np.random.permutation(idx)             # idx_normal_to_idx_rand[i] = idx of cell i in random array
+    idx_rand_to_idx_normal = np.argsort(idx_normal_to_idx_rand)     # idx_rand_to_idx_normal[j] = idx of cell j in normal array
+
+    np.savetxt("idx_normal_to_idx_rand.csv", idx_normal_to_idx_rand, delimiter=",") # to be able to replicate it
+    np.savetxt("idx_rand_to_idx_normal.csv", idx_rand_to_idx_normal, delimiter=",")
+
+    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'w') as f:
+        f.write(f"\nStarting the preprocessing.")
+
+    preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n_levels, n_variables, idx_normal_to_idx_rand)
+
