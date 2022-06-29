@@ -24,16 +24,16 @@ def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n
                 idx_rand = idx_normal_to_idx_rand[idx]
                 output[idx_rand,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1], data_split[idx]),axis=0)
         lstart += 5
-        with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'w') as f:
+        with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
             f.write(f'\nFinished preprocessing of {v}.')
     
-    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'w') as f:
+    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
         f.write(f'\nStarting to write the output file.')
 
     with h5py.File(path+'output.hdf5', 'w') as f:
         f.create_dataset('output', output.shape, data=output)
 
-    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'w') as f:
+    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
         f.write(f'\nPreprocessing finished.')
 
 
