@@ -22,7 +22,8 @@ def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n
             data_split = np.array_split(data, num_partitions)   # list
             idx = 1
             for idx_rand in idx_normal_to_idx_rand: # len(idx_normal_to_idx_rand) num_partitions-1
-                output[idx_rand,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1], data_split[idx]),axis=0)
+                output[idx_rand-1,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1], data_split[idx]),axis=0)
+                idx += 1
         lstart += 5
         with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
             f.write(f'\nFinished preprocessing of {v}.')
@@ -57,8 +58,8 @@ if __name__ == '__main__':
     # Create an array of random numbers from to (num_partitions - 1)
     #-----------------------------------------------------------------------------
 
-    idx = range(1,num_partitions)
-    idx_normal_to_idx_rand = np.random.permutation(idx)             # idx_normal_to_idx_rand[i] = idx of cell i in random array
+    idx = range(num_partitions-1)
+    idx_normal_to_idx_rand = np.random.permutation(idx)             # idx_normal_to_idx_rand[i] = idx of cell (i+1) in random array
     idx_rand_to_idx_normal = np.argsort(idx_normal_to_idx_rand)     # idx_rand_to_idx_normal[j] = idx of cell j in normal array
 
     np.savetxt(path + 'idx_normal_to_idx_rand.csv', idx_normal_to_idx_rand, delimiter=',') # to be able to replicate it
