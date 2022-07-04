@@ -13,7 +13,8 @@ import sys
 
 def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n_levels, n_variables, idx_normal_to_idx_rand):
 
-    output = np.zeros((num_partitions-1, period_of_influence*2, lat_dim, lon_dim, n_levels*n_variables))
+    output = np.zeros((num_partitions-1, period_of_influence*2, lat_dim, lon_dim, n_levels*n_variables + 1)) # '+ 1' is for the target pr value
+    # output = np.zeros((num_partitions-1, period_of_influence*2, lat_dim, lon_dim, n_levels*n_variables + 1)) # '+ 1' is for the target pr value
     l_start = 0
     for v in ['q', 't', 'u', 'v', 'z']:
         with xr.open_dataset(path + f'{v}_sliced.nc') as file:
@@ -25,17 +26,19 @@ def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n
             for idx_rand in idx_normal_to_idx_rand: # len(idx_normal_to_idx_rand) num_partitions-1
                 output[idx_rand-1,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1], data_split[idx]),axis=0)
                 idx += 1
+                # if v == 'q':
+                #     output[idx_rand-1,:,:,:,-1] = 
         l_start += 5
-        with open(path + 'log.txt', 'a') as f:
+        with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
             f.write(f'\nFinished preprocessing of {v}.')
     
-    with open(path + 'log.txt', 'a') as f:
+    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
         f.write(f'\nStarting to write the output file.')
 
-    with h5py.File(path + 'output.hdf5', 'w') as f:
+    with h5py.File(path+'output.hdf5', 'w') as f:
         f.create_dataset('output', output.shape, data=output)
 
-    with open(path + 'log.txt', 'a') as f:
+    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
         f.write(f'\nPreprocessing finished.')
 
 
@@ -49,7 +52,7 @@ if __name__ == '__main__':
     n_levels = 5
     n_variables = 5
 
-    with xr.open_dataset(path + 'q_sliced.nc') as f:
+    with xr.open_dataset(f"{path}/q_sliced.nc") as f:
         hours_total = len(f.time)
         lat_dim = len(f.latitude)
         lon_dim = len(f.longitude)
@@ -67,7 +70,7 @@ if __name__ == '__main__':
     np.savetxt(path + 'idx_normal_to_idx_rand.csv', idx_normal_to_idx_rand, delimiter=',') # to be able to replicate it
     np.savetxt(path + 'idx_rand_to_idx_normal.csv', idx_rand_to_idx_normal, delimiter=',')
 
-    with open(path + 'log.txt', 'w') as f:
+    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'w') as f:
         f.write(f'\nStarting the preprocessing.')
 
     preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n_levels, n_variables, idx_normal_to_idx_rand)
