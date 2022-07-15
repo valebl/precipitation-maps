@@ -11,67 +11,52 @@ import sys
 # Functions
 #------------
 
-def preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n_levels, n_variables, idx_normal_to_idx_rand):
+def preprocessing_input(path, lat_dim, lon_dim, n_levels, time_dim, n_variables, year_start, year_end):
 
-    output = np.zeros((num_partitions-1, period_of_influence*2, lat_dim, lon_dim, n_levels*n_variables + 1)) # '+ 1' is for the target pr value
+    output = np.zeros((lat_dim, lon_dim, n_levels, time_dim, n_variables)) # '+ 1' is for the target pr value
     # output = np.zeros((num_partitions-1, period_of_influence*2, lat_dim, lon_dim, n_levels*n_variables + 1)) # '+ 1' is for the target pr value
     l_start = 0
     for v in ['q', 't', 'u', 'v', 'z']:
-        with xr.open_dataset(path + f'{v}_sliced.nc') as file:
-            data = file[v].values
-            s = data.shape
-            data = data.reshape(s[0], s[2], s[3], s[1])         # (t_dim, lat_dim, lon_dim, n_levels)
-            data_split = np.array_split(data, num_partitions)   # list
-            idx = 1
-            for idx_rand in idx_normal_to_idx_rand: # len(idx_normal_to_idx_rand) num_partitions-1
-                output[idx_rand-1,:,:,:,l_start:l_start+5] = np.concatenate((data_split[idx-1], data_split[idx]),axis=0)
-                idx += 1
-                # if v == 'q':
-                #     output[idx_rand-1,:,:,:,-1] = 
+        time_start = 0
+        for year in range(year_start, year_end +1):
+            with xr.open_dataset(path + f'{v}_{year}.nc') as file:
+                time_year_dim = len(file.time)
+                data = file[v].values
+                s = data.shape
+                data = data.reshape(s[2], s[3], s[1], s[0])         # (lat_dim, lon_dim, n_levels, time_year_dim)
+                output[:,:,:,time_start:time_start+time_year_dim,l_start:l_start+5] = data
+                time_start += time_year_dim
+                with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/log_input.txt', 'a') as f:
+                    f.write(f'\nPreprocessing {v}_{year}.nc, time indexes from {time_start} to {time_start+time_year_dim}.')
         l_start += 5
-        with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
+        with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/log_input.txt', 'a') as f:
             f.write(f'\nFinished preprocessing of {v}.')
     
-    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
+    with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/log_input.txt', 'a') as f:
         f.write(f'\nStarting to write the output file.')
 
-    with h5py.File(path+'output.hdf5', 'w') as f:
-        f.create_dataset('output', output.shape, data=output)
+    with h5py.File(path+'input.hdf5', 'w') as f:
+        f.create_dataset('input', output.shape, data=output)
 
-    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'a') as f:
+    with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/log_input.txt', 'a') as f:
         f.write(f'\nPreprocessing finished.')
 
 
 if __name__ == '__main__':
 
-    #path = '/m100_work/ICT22_ESP_0/vblasone/SLICED/'
-    path = str(sys.argv[1])
+    path = '/m100_work/ICT22_ESP_0/vblasone/ERA5/'
     year_start = 2001
     year_end = 2016
-    period_of_influence = 24 # hours
     n_levels = 5
     n_variables = 5
+    time_dim = 140256
 
-    with xr.open_dataset(f"{path}/q_sliced.nc") as f:
-        hours_total = len(f.time)
+    with xr.open_dataset(f"{path}/q_2001.nc") as f:
         lat_dim = len(f.latitude)
         lon_dim = len(f.longitude)
 
-    num_partitions = int(hours_total / period_of_influence)
-
-    #-----------------------------------------------------------------------------
-    # Create an array of random numbers from to (num_partitions - 1)
-    #-----------------------------------------------------------------------------
-
-    idx = range(num_partitions-1)
-    idx_normal_to_idx_rand = np.random.permutation(idx)             # idx_normal_to_idx_rand[i] = idx of cell (i+1) in random array
-    idx_rand_to_idx_normal = np.argsort(idx_normal_to_idx_rand)     # idx_rand_to_idx_normal[j] = idx of cell j in normal array
-
-    np.savetxt(path + 'idx_normal_to_idx_rand.csv', idx_normal_to_idx_rand, delimiter=',') # to be able to replicate it
-    np.savetxt(path + 'idx_rand_to_idx_normal.csv', idx_rand_to_idx_normal, delimiter=',')
-
-    with open('/m100_work/ICT22_ESP_0/vblasone/SLICED/log.txt', 'w') as f:
+    with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/log_input.txt', 'w') as f:
         f.write(f'\nStarting the preprocessing.')
 
-    preprocessing(path, num_partitions, period_of_influence, lat_dim, lon_dim, n_levels, n_variables, idx_normal_to_idx_rand)
+    preprocessing_input(path, lat_dim, lon_dim, n_levels, time_dim, n_variables, year_start, year_end)
 
