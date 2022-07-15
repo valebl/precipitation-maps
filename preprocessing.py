@@ -16,7 +16,7 @@ def preprocessing_input(input_path, output_path, log_path, lat_dim, lon_dim, n_l
     for year in range(year_start, year_end +1):
         with xr.open_dataset(input_path + f'q_{year}.nc') as file:
             time_year_dim = len(file.time)
-            database = np.zeros((lat_dim, lon_dim, n_levels, time_year_dim, n_variables))
+            database = np.zeros((lat_dim, lon_dim, n_levels, time_year_dim, n_variables), dtype=np.float32)
         v_idx = 0
         for v in ['q', 't', 'u', 'v', 'z']:
             with xr.open_dataset(input_path + f'{v}_{year}.nc') as file:
