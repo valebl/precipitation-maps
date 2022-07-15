@@ -10,7 +10,7 @@ import xarray as xr
 # Functions
 #------------
 
-def preprocessing_input(input_path, output_path, lat_dim, lon_dim, n_levels, time_dim, n_variables, year_start, year_end):
+def preprocessing_input(input_path, output_path, log_path, lat_dim, lon_dim, n_levels, time_dim, n_variables, year_start, year_end):
 
     database = np.zeros((lat_dim, lon_dim, n_levels, time_dim, n_variables)) # '+ 1' is for the target pr value
     # output = np.zeros((num_partitions-1, period_of_influence*2, lat_dim, lon_dim, n_levels*n_variables + 1)) # '+ 1' is for the target pr value
@@ -25,19 +25,29 @@ def preprocessing_input(input_path, output_path, lat_dim, lon_dim, n_levels, tim
                 data = data.reshape(s[2], s[3], s[1], s[0])         # (lat_dim, lon_dim, n_levels, time_year_dim)
                 database[:,:,:,time_start:time_start+time_year_dim,l_start:l_start+5] = data
                 time_start += time_year_dim
-                with open('/m100_work/ICT22_ESP_0/vblasone/rainfall_maps/.log/log_input.txt', 'a') as f:
+                with open(log_path+'log_input.txt', 'a') as f:
                     f.write(f'\nPreprocessing {v}_{year}.nc, time indexes from {time_start} to {time_start+time_year_dim}.')
         l_start += 5
-        with open('/m100_work/ICT22_ESP_0/vblasone/rainfall_maps/.log/log_input.txt', 'a') as f:
+        with open(log_path+'log_input.txt', 'a') as f:
             f.write(f'\nFinished preprocessing of {v}.')
     
-    with open('/m100_work/ICT22_ESP_0/vblasone/rainfall_maps/.log/log_input.txt', 'a') as f:
+    with open(log_path+'log_input.txt', 'a') as f:
         f.write(f'\nStarting to write the output file.')
+
+    with h5py.File(output_path+'input.hdf5', 'w') as f:
+        f.create_dataset('input', database.shape, data=database,
+            compression="gzip",  maxshape=(database.shape[0], database.shape[1], database.shape[2], None, database.shape[4]))
+
+        # else:
+                #    with h5py.File(f'{work_dir}/PREPROCESSED/preprocessed_data.hdf5', 'a') as f:
+                        #        f["data"].resize((f["data"].shape[0] + output_array.shape[0]), axis = 0)
+                                #        f["data"][-output_array.shape[0]:] = output_array
+
 
     with h5py.File(output_path+'input.hdf5', 'w') as f:
         f.create_dataset('input', database.shape, data=database)
 
-    with open('/m100_work/ICT22_ESP_0/vblasone/rainfall_maps/.log/log_input.txt', 'a') as f:
+    with open(log_path+'log_input.txt', 'a') as f:
         f.write(f'\nPreprocessing finished.')
 
 
@@ -45,6 +55,7 @@ if __name__ == '__main__':
 
     input_path = '/m100_work/ICT22_ESP_0/vblasone/ERA5/'
     output_path = '/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/'
+    log_path = '/m100_work/ICT22_ESP_0/vblasone/rainfall-maps/.log/'
     year_start = 2001
     year_end = 2016
     n_levels = 5
@@ -55,8 +66,8 @@ if __name__ == '__main__':
         lat_dim = len(f.latitude)
         lon_dim = len(f.longitude)
 
-    with open('/m100_work/ICT22_ESP_0/vblasone/rainfall_maps/.log/log_input.txt', 'w') as f:
+    with open(log_path+'log_input.txt', 'w') as f:
         f.write(f'\nStarting the preprocessing.')
 
-    preprocessing_input(input_path, output_path, lat_dim, lon_dim, n_levels, time_dim, n_variables, year_start, year_end)
+    preprocessing_input(input_path, output_path, log_path, lat_dim, lon_dim, n_levels, time_dim, n_variables, year_start, year_end)
 
