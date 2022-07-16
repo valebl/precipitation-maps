@@ -12,13 +12,13 @@ import xarray as xr
 
 def preprocessing_input(input_path, output_path, log_path, lat_dim, lon_dim, n_levels, time_dim, n_variables, year_start, year_end):
 
-    database = np.zeros((lat_dim, lon_dim, n_levels, time_dim, n_variables), dtype=np.float32)
+    database = np.zeros((lon_dim, lat_dim, n_levels, time_dim, n_variables), dtype=np.float32)
     v_idx = 0
     for v in ['q', 't', 'u', 'v', 'z']:
         with xr.open_dataset(input_path + f'{v}_sliced.nc') as file:
             data = file[v].values
-            s = data.shape
-            data = data.reshape(s[2], s[3], s[1], s[0])         # (lat_dim, lon_dim, n_levels, time_year_dim)
+            s = data.shape # (time, levels, lat, lon)
+            data = data.reshape(s[3], s[2], s[1], s[0])         # (lon_dim, lat_dim, n_levels, time_year_dim)
             database[:,:,:,:,v_idx] = data
             with open(log_path+'log_input.txt', 'a') as f:
                 f.write(f'\nPreprocessing {v}_sliced.nc.')
