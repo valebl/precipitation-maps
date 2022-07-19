@@ -2,9 +2,10 @@
 # Import the relevant packages
 #--------------------------------
 
-import h5py
+#import h5py
 import numpy as np
 import xarray as xr
+import pickle
 
 #------------
 # Functions
@@ -27,9 +28,13 @@ def preprocessing_input(input_path, output_path, log_path, lat_dim, lon_dim, n_l
         with open(log_path+'log_input.txt', 'a') as f:
             f.write(f'\nStarting to write the output file.')
     
-    with h5py.File(output_path+'input.hdf5', 'w') as f:
-            f.create_dataset('input', database.shape, data=database)
+    #with h5py.File(output_path+'input.hdf5', 'w') as f:
+    #        f.create_dataset('input', database.shape, data=database)
     
+    with open(output_path+'input.pkl', 'wb') as f:
+        pickle.dump(database, f)
+
+
     with open(log_path+'log_input.txt', 'a') as f:
         f.write(f'\Output file written.')
     
