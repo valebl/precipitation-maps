@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # train the model
     
     loss_ae = nn.functional.mse_loss
-    optimizer_ae =  torch.optim.Adam(conv_ae.parameters(), lr=LR, weight_decay=5e-4, momentum=.9)
+    optimizer_ae =  torch.optim.Adam(conv_ae.parameters(), lr=LR, weight_decay=5e-4)
 
     total_loss, loss_list = train_model_ae(conv_ae, dataloader=trainloader, loss_fn=loss_ae, optimizer=optimizer_ae, num_epochs=EPOCHS)
 
