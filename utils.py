@@ -61,7 +61,7 @@ def train_model_ae(model, dataloader, loss_fn, optimizer, num_epochs, log_path, 
         performance_meter = AverageMeter()
 
         with open(log_path+'log_ae.txt', 'a') as f:
-            f.write(f"Epoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.5f}")
+            f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.5f}")
         
         lr_scheduler_batch = lr_scheduler if not lr_scheduler_step_on_epoch else None
 
@@ -69,7 +69,7 @@ def train_model_ae(model, dataloader, loss_fn, optimizer, num_epochs, log_path, 
                     device, lr_scheduler_batch)
 
         with open(log_path+'log_ae.txt', 'a') as f:
-            f.write(f"Epoch {epoch+1} completed. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.4f}.")
+            f.write(f"\nEpoch {epoch+1} completed. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.4f}.")
         
         # produce checkpoint dictionary -- but only if the name and folder of the checkpoint are not None
         if checkpoint_name is not None and checkpoint_loc is not None:

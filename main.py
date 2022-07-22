@@ -11,7 +11,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if __name__ == '__main__':
 
-    PCT_TRAINSET = 0.80
+    PCT_TRAINSET = 0.0010
     LR = 0.1
     EPOCHS = 100
 
