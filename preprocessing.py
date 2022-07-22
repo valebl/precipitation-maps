@@ -13,14 +13,14 @@ import pickle
 
 def preprocessing_input(input_path, output_path, log_path, lat_dim, lon_dim, n_levels, time_dim, n_variables, year_start, year_end):
 
-    database = np.zeros((lon_dim, lat_dim, n_levels, time_dim, n_variables), dtype=np.float32)
+    database = np.zeros((n_variables, n_levels, lon_dim, lat_dim, time_dim, ), dtype=np.float32) # variables, levels, lon, lat, time
     v_idx = 0
     for v in ['q', 't', 'u', 'v', 'z']:
         with xr.open_dataset(input_path + f'{v}_sliced.nc') as file:
             data = file[v].values
             s = data.shape # (time, levels, lat, lon)
             data = data.reshape(s[1], s[3], s[2], s[0])         # (lon_dim, lat_dim, n_levels, time_year_dim)
-            database[:,:,:,:,v_idx] = data
+            database[v_idx,:,:,:,:] = data
             with open(log_path+'log_input.txt', 'a') as f:
                 f.write(f'\nPreprocessing {v}_sliced.nc.')
         v_idx += 1
