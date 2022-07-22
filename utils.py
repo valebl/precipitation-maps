@@ -60,7 +60,7 @@ def train_model_ae(model, dataloader, loss_fn, optimizer, num_epochs, log_path, 
         loss_meter = AverageMeter()
         performance_meter = AverageMeter()
 
-        with open(log_path+'log_input.txt', 'a') as f:
+        with open(log_path+'log_ae.txt', 'a') as f:
             f.write(f"Epoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.5f}")
         
         lr_scheduler_batch = lr_scheduler if not lr_scheduler_step_on_epoch else None

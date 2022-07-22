@@ -35,8 +35,8 @@ if __name__ == '__main__':
     trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset))
 
     # construct the dataloaders
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True, num_workers=8, collate_fn=custom_collate_fn)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=32, shuffle=False, num_workers=8, collate_fn=custom_collate_fn)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True, num_workers=4, collate_fn=custom_collate_fn)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=32, shuffle=False, num_workers=4, collate_fn=custom_collate_fn)
 
     # define the model
     conv_ae = Conv_autoencoder(input_size=25)

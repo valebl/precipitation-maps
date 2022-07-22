@@ -22,7 +22,6 @@ class Clima_dataset(Dataset):
         self.input_data, self.target_data = self._load_data_into_memory(self.input_path, self.target_path)
         self.lon_size = self.input_data.shape[2]
         self.lat_size = self.input_data.shape[3]
-        print(self.lon_size, self.lat_size)
         self.idxs_space = np.array([[(i,j) for j in range(self.PAD,self.lat_size-(self.PAD+1))] for i in range(self.PAD,self.lon_size-(self.PAD+1))])
         self.idxs_space = self.idxs_space.reshape(-1, self.idxs_space.shape[-1]) # flatten the lon and lat dimensions into a single dimension
         self.idxs = np.tile(self.idxs_space, (self.TIME,1))
