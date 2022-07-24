@@ -11,9 +11,9 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if __name__ == '__main__':
 
-    PCT_TRAINSET = 0.10
+    PCT_TRAINSET = 0.001
     LR = 0.01
-    EPOCHS = 100
+    EPOCHS = 1000
 
     input_path = '/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/'
     target_path = '/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/'
@@ -23,7 +23,7 @@ if __name__ == '__main__':
         f.write(f'\nStarting on {device}.')
 
     # create the dataset
-    dataset = Clima_dataset(input_path+'input.pkl', target_path+'target.pkl')
+    dataset = Clima_dataset(input_path+'input_standard.pkl', target_path+'target.pkl')
 
     # split into trainset and testset
     len_trainset = int(len(dataset) * PCT_TRAINSET)

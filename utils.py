@@ -20,6 +20,8 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+    
+    def add_loss(self):
         self.avg_list.append(self.avg)
 
 def use_gpu_if_possible():
@@ -30,8 +32,9 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter,
                    performance_meter, performance, device, lr_scheduler): # note: I've added a generic performance to replace accuracy
     for X, _ in dataloader:
         X = X.to(device)
-        optimizer.zero_grad() 
+        optimizer.zero_grad()
         target = model(X)
+#         print(X.shape, target.shape)
         loss = loss_fn(X, target)
         loss.backward()
         optimizer.step()
@@ -40,7 +43,7 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter,
         #acc = performance(X, target)
         loss_meter.update(val=loss.item(), n=X.shape[0])
 
-def train_model_ae(model, dataloader, loss_fn, optimizer, num_epochs, log_path, checkpoint_loc=None,
+def train_model_ae(model, dataloader, loss_fn, optimizer, num_epochs, checkpoint_loc=None,
                 checkpoint_name="checkpoint.pt", performance=None, lr_scheduler=None,
                 device=None, lr_scheduler_step_on_epoch=False):
 
@@ -50,7 +53,7 @@ def train_model_ae(model, dataloader, loss_fn, optimizer, num_epochs, log_path, 
 
     if device is None:
         device = use_gpu_if_possible()
-    
+
     model = model.to(device)
     model.train()
 
@@ -60,17 +63,16 @@ def train_model_ae(model, dataloader, loss_fn, optimizer, num_epochs, log_path, 
         loss_meter = AverageMeter()
         performance_meter = AverageMeter()
 
-        with open(log_path+'log_ae.txt', 'a') as f:
-            f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.5f}")
-        
+        print(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.5f}")
+
         lr_scheduler_batch = lr_scheduler if not lr_scheduler_step_on_epoch else None
 
         train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, performance_meter, performance,
                     device, lr_scheduler_batch)
 
-        with open(log_path+'log_ae.txt', 'a') as f:
-            f.write(f"\nEpoch {epoch+1} completed. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.4f}.")
-        
+        print(f"\nEpoch {epoch+1} completed. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.4f}.")
+        loss_meter.add_loss()
+
         # produce checkpoint dictionary -- but only if the name and folder of the checkpoint are not None
         if checkpoint_name is not None and checkpoint_loc is not None:
             checkpoint_dict = {
@@ -79,7 +81,7 @@ def train_model_ae(model, dataloader, loss_fn, optimizer, num_epochs, log_path, 
                 "epoch": epoch
             }
             torch.save(checkpoint_dict, os.path.join(checkpoint_loc, checkpoint_name))
-        
+
         if lr_scheduler is not None and lr_scheduler_step_on_epoch:
             if isinstance(lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                 lr_scheduler.step(loss_meter.avg)
