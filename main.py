@@ -11,8 +11,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 if __name__ == '__main__':
 
-    PCT_TRAINSET = 0.0010
-    LR = 0.1
+    PCT_TRAINSET = 0.10
+    LR = 0.01
     EPOCHS = 100
 
     input_path = '/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/'
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset))
 
     # construct the dataloaders
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True, num_workers=4, collate_fn=custom_collate_fn)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True, num_workers=4, collate_fn=custom_collate_fn)
     testloader = torch.utils.data.DataLoader(testset, batch_size=32, shuffle=False, num_workers=4, collate_fn=custom_collate_fn)
 
     # define the model
@@ -49,3 +49,4 @@ if __name__ == '__main__':
     total_loss, loss_list = train_model_ae(conv_ae, dataloader=trainloader, loss_fn=loss_ae, optimizer=optimizer_ae, num_epochs=EPOCHS, log_path=log_path)
 
     np.savetxt('loss.csv', loss_list)
+    torch.save(conv_ae.state_dict(), 'checkpoint.pth')
