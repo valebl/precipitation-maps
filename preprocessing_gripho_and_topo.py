@@ -71,10 +71,12 @@ if __name__ == '__main__':
                         y = pr_t.reshape(pr_t.shape[0],1)
                         gnn_target[(idx)] = y
             j+=1
+        with open(log_file, 'a') as f:
+            f.write(f"Finished longitude = {lon_era5}.")
         i += 1
 
     with open(log_file, 'a') as f:
-        f.write(f"took {time.time() - start} seconds")    
+        f.write(f"\nPreprocessing took {time.time() - start} seconds")    
 
     with open(log_file, 'a') as f:
         f.write(f'\nStarting to write the file.')    
@@ -88,4 +90,4 @@ if __name__ == '__main__':
     idx_to_key = np.sort(np.array(list(gnn_target.keys())))
     with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED/idx_to_key.pkl', 'wb') as f:
         pickle.dump(idx_to_key, f)
-
+i
