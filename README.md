@@ -1,1 +1,1 @@
-# rainfall-maps
+# precipitation-maps
