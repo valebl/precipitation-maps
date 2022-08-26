@@ -20,7 +20,7 @@ class Clima_dataset(Dataset):
             idx_to_key = pickle.load(f)
         return input, target, data, idx_to_key
 
-    def __init__(self, path, input_file, target_file, data_file, idx_file,**kwargs):
+    def __init__(self, path, input_file, target_file, data_file, idx_file, **kwargs):
         super().__init__()
         self.PAD = 2
         self.LAT_DIM = 43

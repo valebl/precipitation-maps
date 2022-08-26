@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import sys
 
 import torch
 from torch_geometric.data import Batch
@@ -114,11 +115,11 @@ def train_epoch_multigpu_CNN_GNN(model, dataloader, loss_fn, optimizer,
         loss_meter, accelerator):
 
     for X, data in dataloader:
-        data = Batch.from_data_list(data)
-        X, data = X.cuda(), data.cuda()
-        y = data.y
+        #data = Batch.from_data_list(data)
+        #X, data = X.cuda(), data.cuda()
+        #y = data.y
         optimizer.zero_grad()
-        y_pred = model(X, data, 'cuda')
+        y_pred, y = model(X, data, accelerator.device) #, 'cuda')
         loss = loss_fn(y_pred, y)
         accelerator.backward(loss)
         optimizer.step()

@@ -9,6 +9,7 @@ from torch import nn
 
 from dataset import Clima_dataset, custom_collate_fn
 from models import CNN_GNN_deep_3 as Model
+from utils import train_epoch_multigpu_CNN_GNN as train_epoch
 from utils import train_model_multigpu_CNN_GNN as train
 from utils import load_encoder_checkpoint, load_model_checkpoint, test_model
 
@@ -23,6 +24,7 @@ parser.add_argument('--input_path', type=str, help='root path to input dataset')
 parser.add_argument('--log_path', type=str, default=os.getcwd(), help='log saving path')
 
 #-- input files
+parser.add_argument('--input_file', type=str, default="input_standard.pkl")
 parser.add_argument('--gnn_data_file', type=str, default="gnn_data_standard.pkl")
 parser.add_argument('--gnn_target_file', type=str, default="gnn_target_2015-2016.pkl")
 parser.add_argument('--idx_file', type=str, default="idx_to_key_2015-2016.pkl")
@@ -57,10 +59,10 @@ if __name__ == '__main__':
                 f'\nThere are {torch.cuda.device_count()} available GPUs.')
         
     #-- create the dataset
-    dataset = Clima_dataset(path=args.input_path, data_file=args.gnn_data_file, args.target_file=args.gnn_target_file, idx_file=args.idx_file)
+    dataset = Clima_dataset(path=args.input_path, input_file=args.input_file, data_file=args.gnn_data_file, target_file=args.gnn_target_file, idx_file=args.idx_file)
 
     #-- split into trainset and testset
-    len_trainset = int(len(dataset) * pct_trainset)
+    len_trainset = int(len(dataset) * args.pct_trainset)
     len_testset = len(dataset) - len_trainset
     
     if accelerator.is_main_process:
@@ -102,7 +104,7 @@ if __name__ == '__main__':
 
     total_loss, loss_list = train(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
         num_epochs=epochs, accelerator=accelerator, log_path=args.log_path, log_file=log_file, lr_scheduler=scheduler,
-        checkpoint_name=args.log_path+args.checkpoint_file, loss_name=args.log_path+args.loss_file)
+        checkpoint_name=args.log_path+args.checkpoint_file, loss_name=args.log_path+args.loss_file, train_epoch=train_epoch)
 
     end = time.time()
 
