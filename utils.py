@@ -219,8 +219,7 @@ def test_model(model, dataloader, accelerator, log_path, log_file, loss_fn=None)
     model.eval()
     with torch.no_grad():
         for X, data in dataloader:
-            y = data.y
-            y_pred = model(X, data, accelerator.device)
+            y_pred, y = model(X, data, accelerator.device)
             loss = loss_fn(y, y_pred) if loss_fn is not None else None
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])

@@ -10,7 +10,7 @@ from torch import nn
 from dataset import Clima_dataset, custom_collate_fn
 from models import CNN_GNN_deep_3 as Model
 from utils import train_epoch_multigpu_CNN_GNN as train_epoch
-from utils import train_model_multigpu_CNN_GNN as train
+from utils import train_model_multigpu as train
 from utils import load_encoder_checkpoint, load_model_checkpoint, test_model
 
 from accelerate import Accelerator
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    with open(log_path+log_file, 'w') as f:
+    with open(args.log_path+args.log_file, 'w') as f:
         f.write(f'\nStarting on with pct_trainset={args.pct_trainset}, lr={args.lr} and epochs={args.epochs}.'+
                 f'\nThere are {torch.cuda.device_count()} available GPUs.')
         
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     len_testset = len(dataset) - len_trainset
     
     if accelerator.is_main_process:
-        with open(args.log_path+log_file, 'a') as f:
+        with open(args.log_path+args.log_file, 'a') as f:
             f.write(f'\nTrainset size = {len_trainset}, testset size = {len_testset}.')
 
     generator=torch.Generator().manual_seed(42)
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     if accelerator.is_main_process:
         total_memory, used_memory, free_memory = map(int, os.popen('free -t -m').readlines()[-1].split()[1:])
-        with open(args.log_path+log_file, 'a') as f:
+        with open(args.log_path+args.log_file, 'a') as f:
             f.write(f"\nRAM memory {round((used_memory/total_memory) * 100, 2)} %")
     
     #-- define the model
@@ -86,9 +86,9 @@ if __name__ == '__main__':
 
     #-- either load the model checkpoint or load the parameters for the encoder
     if args.load_checkpoint is True:
-        model = load_model_checkpoint(model, args.checkpoint_input_file, accelerator, args.log_path, log_file)
+        model = load_model_checkpoint(model, args.checkpoint_input_file, accelerator, args.log_path, args.log_file)
     else:
-        model = load_encoder_checkpoint(model, args.checkpoint_encoder_file, accelerator, args.log_path, log_file, fine_tuning=args.fine_tuning)
+        model = load_encoder_checkpoint(model, args.checkpoint_encoder_file, accelerator, args.log_path, args.log_file, fine_tuning=args.fine_tuning)
 
     #-- train the model
     loss_fn = nn.functional.mse_loss
@@ -103,16 +103,17 @@ if __name__ == '__main__':
     start = time.time()
 
     total_loss, loss_list = train(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
-        num_epochs=epochs, accelerator=accelerator, log_path=args.log_path, log_file=log_file, lr_scheduler=scheduler,
+        num_epochs=args.epochs, accelerator=accelerator, log_path=args.log_path, log_file=args.log_file, lr_scheduler=scheduler,
         checkpoint_name=args.log_path+args.checkpoint_file, loss_name=args.log_path+args.loss_file, train_epoch=train_epoch)
 
     end = time.time()
 
     if accelerator.is_main_process:
-        with open(args.log_path+log_file, 'a') as f:
-            f.write(f"Training _cnn_gnncompleted in {start - end} seconds.")
+        with open(args.log_path+args.log_file, 'a') as f:
+            f.write(f"\nTraining _cnn_gnn completed in {end - start} seconds.")
 
     #-- test the model
-    test_loss = test_model(model, testloader, accelerator, loss_fn=None)
-
+    test_loss = test_model(model, testloader, accelerator, args.log_path, args.log_file, loss_fn=loss_fn)
+    
+    accelerator.print(f"\nDONE! :) with test loss = {test_loss}")
 
