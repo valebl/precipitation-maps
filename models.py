@@ -136,7 +136,7 @@ class CNN_GNN_deep_3(nn.Module):
     def forward(self, X_batch, data_batch, device): # data_batch is a list of Data objects
         encoding = self.encoder(X_batch)
         for i, data in enumerate(data_batch):
-            data.to(device)
+            data = data.to(device)
             features = torch.zeros((data.num_nodes, 3 + encoding.shape[1])).to(device)
             features[:,:3] = data.x[:,:3]
             features[:,3:] = encoding[i,:]

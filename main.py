@@ -46,6 +46,8 @@ parser.add_argument('--fine_tuning',  action='store_true')
 parser.add_argument('--no-fine_tuning', dest='fine_tuning', action='store_false')
 parser.add_argument('--load_checkpoint',  action='store_true')
 parser.add_argument('--no-load_checkpoint', dest='load_checkpoint', action='store_false')
+parser.add_argument('--test_model',  action='store_true')
+parser.add_argument('--no-test_model', dest='test_model', action='store_false')
 
 
 if __name__ == '__main__':
@@ -100,6 +102,11 @@ if __name__ == '__main__':
 
     model, optimizer, trainloader = accelerator.prepare(model, optimizer, trainloader)
 
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    if accelerator.is_main_process: 
+        with open(args.log_path+args.log_file, 'a') as f:
+            f.write(f"\nTotal number of trainable parameters: {total_params}.")
+
     start = time.time()
 
     total_loss, loss_list = train(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
@@ -113,7 +120,9 @@ if __name__ == '__main__':
             f.write(f"\nTraining _cnn_gnn completed in {end - start} seconds.")
 
     #-- test the model
-    test_loss = test_model(model, testloader, accelerator, args.log_path, args.log_file, loss_fn=loss_fn)
-    
-    accelerator.print(f"\nDONE! :) with test loss = {test_loss}")
+    if test_model:
+        test_loss = test_model(model, testloader, accelerator, args.log_path, args.log_file, loss_fn=loss_fn)
+        accelerator.print(f"\nDONE! :) with test loss = {test_loss}")
+    else:
+        accelerator.print("\nDone!")
 

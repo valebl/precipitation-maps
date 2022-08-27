@@ -124,7 +124,7 @@ def train_epoch_multigpu_CNN_GNN(model, dataloader, loss_fn, optimizer,
         accelerator.backward(loss)
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
-
+        
 
 #------TRAIN ON SINGLE-GPU------  
 
