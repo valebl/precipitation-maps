@@ -8,7 +8,8 @@ import torch
 from torch import nn
 
 from dataset import Clima_dataset, custom_collate_fn
-from models import CNN_GNN_deep_3 as Model
+from models import CNN_GNN_deep_3 as Model_2GNN
+from models import CNN_GNN_deep_3layers as Model_3GNN
 from utils import train_epoch_multigpu_CNN_GNN as train_epoch
 from utils import train_model_multigpu as train
 from utils import load_encoder_checkpoint, load_model_checkpoint, test_model
@@ -49,6 +50,9 @@ parser.add_argument('--no-load_checkpoint', dest='load_checkpoint', action='stor
 parser.add_argument('--test_model',  action='store_true')
 parser.add_argument('--no-test_model', dest='test_model', action='store_false')
 
+#--other
+parser.add_argument('--num_GNN_layers', type=int, default=2, help='number of GNN layers')
+
 
 if __name__ == '__main__':
 
@@ -84,7 +88,11 @@ if __name__ == '__main__':
             f.write(f"\nRAM memory {round((used_memory/total_memory) * 100, 2)} %")
     
     #-- define the model
-    model = Model(input_size=25)
+    #model = Model(input_size=25)
+    if args.num_GNN_layers == 3:
+        model = Model_3GNN(input_size=25)
+    else:
+        model = Model_2GNN(input_size=25)
 
     #-- either load the model checkpoint or load the parameters for the encoder
     if args.load_checkpoint is True:
