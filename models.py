@@ -1,7 +1,6 @@
 import numpy as np
-import torch
-import torch.nn as nn
-import torch_geometric.nn as geometric_nn
+from torch import nn
+from torch_geometric import nn as geometric_nn
 from torch_geometric.nn import SAGEConv
 from torch_geometric.data import Data, Batch
 

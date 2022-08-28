@@ -35,11 +35,11 @@ def use_gpu_if_possible():
     return "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
-def load_encoder_checkpoint(model, checkpoint, accelerator, log_path, log_file, fine_tuning=True):
+def load_encoder_checkpoint(model, checkpoint, log_path, log_file, fine_tuning=True, accelerator=None):
     state_dict = torch.load(checkpoint)
     for name, param in state_dict.items():
         if 'encoder' in name:
-            if accelerator.is_main_process:
+            if accelerator is None or accelerator.is_main_process:
                 with open(log_path+log_file, 'a') as f:
                     f.write(f"\nLoading parameters '{name}'")
             param = param.data
@@ -50,20 +50,20 @@ def load_encoder_checkpoint(model, checkpoint, accelerator, log_path, log_file, 
     return model
 
 
-def load_model_checkpoint(model, checkpoint, accelerator, log_path, log_file):
+def load_model_checkpoint(model, checkpoint, log_path, log_file, accelerator=None):
     state_dict = torch.load(checkpoint)
-    with open(log_path+log_file, 'a') as f:
-        f.write(f"\nLoading checkpoint")
+    if accelerator is None or accelerator.is_main_process:
+        with open(log_path+log_file, 'a') as f:
+            f.write(f"\nLoading checkpoint")
     for name, param in state_dict.items():
         param = param.data
         layer = name.partition("module.")[2]
         model.state_dict()[layer].copy(param)
     return model
 
-
-def check_freezed_layers(model, accelerator, log_path, log_file):
+def check_freezed_layers(model, log_path, log_file, accelerator=None):
     for name, param in model.named_parameters():
-        if accelerator.is_main_process:
+        if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
                 f.write(f"\nLayer {name} requires_grad = {param.requires_grad}")
 
@@ -87,16 +87,15 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer,
 def train_epoch_CNN_GNN(model, dataloader, loss_fn, optimizer, loss_meter):
 
     for X, data in dataloader:
-        data = Batch.from_data_list(data)
-        X, data = X.cuda(), data.cuda()
-        y = data.y
+        #data = Batch.from_data_list(data)
+        #X, data = X.cuda(), data.cuda()
+        #y = data.y
         optimizer.zero_grad()
-        y_pred = model(X, data, 'cuda')
+        y_pred, y = model(X, data, 'cuda')
         loss = loss_fn(y_pred, y)
         loss.backward()
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
-
 
 def train_epoch_ae_multigpu(model, dataloader, loss_fn, optimizer,
         loss_meter, accelerator):
