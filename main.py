@@ -45,13 +45,16 @@ parser.add_argument('--lr', type=float, default=0.01, help='initial learning rat
 parser.add_argument('--weight_decay', type=float, default=5e-4, help='weight decay (wd)')
 parser.add_argument('--fine_tuning',  action='store_true')
 parser.add_argument('--no-fine_tuning', dest='fine_tuning', action='store_false')
-parser.add_argument('--load_checkpoint',  action='store_true')
-parser.add_argument('--no-load_checkpoint', dest='load_checkpoint', action='store_false')
+parser.add_argument('--load_ae_checkpoint',  action='store_true')
+parser.add_argument('--no-load_ae_checkpoint', dest='load_checkpoint', action='store_false')
 parser.add_argument('--test_model',  action='store_true')
 parser.add_argument('--no-test_model', dest='test_model', action='store_false')
 
 #--other
 parser.add_argument('--num_GNN_layers', type=int, default=2, help='number of GNN layers')
+parser.add_argument('--checkpoint_ctd', type=str, default='../checkpoint.pth', help='checkpoint to load to continue')
+parser.add_argument('--ctd_training',  action='store_true')
+parser.add_argument('--no-ctd_training', dest='ctd_training', action='store_false')
 
 
 if __name__ == '__main__':
@@ -95,10 +98,10 @@ if __name__ == '__main__':
         model = Model_2GNN(input_size=25)
 
     #-- either load the model checkpoint or load the parameters for the encoder
-    if args.load_checkpoint is True:
-        model = load_model_checkpoint(model, args.checkpoint_input_file, accelerator, args.log_path, args.log_file)
-    else:
+    if args.load_ae_checkpoint is True and args.checkpoint_ctd is False:
         model = load_encoder_checkpoint(model, args.checkpoint_encoder_file, accelerator, args.log_path, args.log_file, fine_tuning=args.fine_tuning)
+    elif args.load_ae_checkpoint is True and args.checkpoint_ctd is True:
+        raise RuntimeError("Either load the ae parameters or continue the training.")
 
     #-- train the model
     loss_fn = nn.functional.mse_loss
@@ -119,7 +122,8 @@ if __name__ == '__main__':
 
     total_loss, loss_list = train(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
         num_epochs=args.epochs, accelerator=accelerator, log_path=args.log_path, log_file=args.log_file, lr_scheduler=scheduler,
-        checkpoint_name=args.log_path+args.checkpoint_file, loss_name=args.log_path+args.loss_file, train_epoch=train_epoch)
+        checkpoint_name=args.log_path+args.checkpoint_file, loss_name=args.log_path+args.loss_file, train_epoch=train_epoch,
+        ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd)
 
     end = time.time()
 

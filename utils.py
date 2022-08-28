@@ -169,11 +169,21 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
 #------TRAIN ON MULTI-GPU------  
 
 def train_model_multigpu(model, dataloader, loss_fn, optimizer, num_epochs,
-        accelerator, log_path, log_file, train_epoch, lr_scheduler=None, checkpoint_name="checkpoint.pth", loss_name="loss.csv", gnn=True):
+        accelerator, log_path, log_file, train_epoch, lr_scheduler=None, 
+        checkpoint_name="checkpoint.pth", loss_name="loss.csv", ctd_training=False, checkpoint_ctd="../checkpoint.pth"):
     
+    epoch_start = 0
+
+    if ctd_training:
+        checkpoint = torch.load(checkpoint_ctd)
+        model.load_state_dict(checkpoint["parameters"])
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        epoch_start = checkpoint["epoch"]
+        #loss = checkpoint["loss"]
+
     model.train()
     # epoch loop
-    for epoch in range(num_epochs):
+    for epoch in range(epoch_start, epoch_start + num_epochs):
         loss_meter = AverageMeter()
         if accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
@@ -193,7 +203,8 @@ def train_model_multigpu(model, dataloader, loss_fn, optimizer, num_epochs,
             checkpoint_dict = {
                 "parameters": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
-                "epoch": epoch
+                "epoch": epoch,
+                #"loss": loss_meter.avg
                 }
             torch.save(checkpoint_dict, checkpoint_name)
 
@@ -202,7 +213,8 @@ def train_model_multigpu(model, dataloader, loss_fn, optimizer, num_epochs,
         checkpoint_dict = {
             "parameters": model.state_dict(),
             "optimizer": optimizer.state_dict(),
-            "epoch": epoch
+            "epoch": epoch,
+            "loss": loss_meter.avg             
             }
         torch.save(checkpoint_dict, checkpoint_name)
     
