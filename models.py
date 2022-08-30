@@ -267,3 +267,85 @@ class CNN_GNN_7layers_GATConv(nn.Module):
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
         return y_pred, data_batch.y
+
+
+class GATConv_1(nn.Module):
+    def __init__(self, input_size=25, hidden_features=1024):
+        super().__init__()
+        #Encoder
+        self.encoder = nn.Sequential(
+            nn.Conv3d(input_size, 32, kernel_size=(5,3,3), padding=(0,1,1), stride=1),
+            nn.ReLU(),
+            nn.Conv3d(32, 64, kernel_size=(5,3,3), padding=(0,1,1), stride=1),
+            nn.ReLU(),
+            nn.Conv3d(64, 64, kernel_size=(5,3,3), padding=0, stride=1),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=(3,3,3), padding=0, stride=1),
+            nn.Flatten() # 2816       
+            )
+            # GNN
+        self.gnn = geometric_nn.Sequential('x, edge_index', [
+            (GATConv(3+2816, hidden_features, aggr='mean'),  'x, edge_index -> x'), # max, mean, add ...
+            nn.ReLU(),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            nn.ReLU(),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            nn.ReLU(),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            nn.ReLU(),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            nn.ReLU(),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            nn.ReLU(),
+            (GATConv(hidden_features, 1, aggr='mean'), 'x, edge_index -> x'), # max, mean, add ...
+            nn.ReLU()
+            ])
+    def forward(self, X_batch, data_batch, device): # data_batch is a list of Data objects
+        encoding = self.encoder(X_batch)
+        for i, data in enumerate(data_batch):
+            data = data.to(device)
+            features = torch.zeros((data.num_nodes, 3 + encoding.shape[1])).to(device)
+            features[:,:3] = data.x[:,:3]
+            features[:,3:] = encoding[i,:]
+            data.__setitem__('x', features)
+        data_batch = Batch.from_data_list(data_batch)
+        y_pred = self.gnn(data_batch.x, data_batch.edge_index)
+        return y_pred, data_batch.y
+
+
+class GATConv_2(nn.Module):
+    def __init__(self, input_size=25, hidden_features=1024):
+        super().__init__()
+        #Encoder
+        self.encoder = nn.Sequential(
+            nn.Conv3d(input_size, 32, kernel_size=(5,3,3), padding=(0,1,1), stride=1),
+            nn.ReLU(),
+            nn.Conv3d(32, 64, kernel_size=(5,3,3), padding=(0,1,1), stride=1),
+            nn.ReLU(),
+            nn.Conv3d(64, 64, kernel_size=(5,3,3), padding=0, stride=1),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=(3,3,3), padding=0, stride=1),
+            nn.Flatten() # 2816       
+            )
+            # GNN
+        self.gnn = geometric_nn.Sequential('x, edge_index', [
+            (GATConv(3+2816, hidden_features, aggr='mean'),  'x, edge_index -> x'), # max, mean, add ...
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, 1, aggr='mean'), 'x, edge_index -> x'), # max, mean, add ...
+            nn.ReLU()
+            ])
+    def forward(self, X_batch, data_batch, device): # data_batch is a list of Data objects
+        encoding = self.encoder(X_batch)
+        for i, data in enumerate(data_batch):
+            data = data.to(device)
+            features = torch.zeros((data.num_nodes, 3 + encoding.shape[1])).to(device)
+            features[:,:3] = data.x[:,:3]
+            features[:,3:] = encoding[i,:]
+            data.__setitem__('x', features)
+        data_batch = Batch.from_data_list(data_batch)
+        y_pred = self.gnn(data_batch.x, data_batch.edge_index)
+        return y_pred, data_batch.y
