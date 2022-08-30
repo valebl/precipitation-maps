@@ -6,10 +6,14 @@ import argparse
 
 import torch
 from torch import nn
+import importlib
 
 from dataset import Clima_dataset, custom_collate_fn
-from models import CNN_GNN_deep_3 as Model_2GNN
-from models import CNN_GNN_deep_3layers as Model_3GNN
+#from models import CNN_GNN_2layers_SAGEConv as Model_2SAGEConv
+#from models import CNN_GNN_3layers_SAGEConv as Model_3SAGEConv
+#from models import CNN_GNN_7layers_SAGEConv as Model_7SAGEConv
+#from models import CNN_GNN_7layers_GATConv as Model_7GATConv
+import models
 from utils import train_epoch_multigpu_CNN_GNN as train_epoch
 from utils import train_model_multigpu as train
 from utils import load_encoder_checkpoint, load_model_checkpoint, test_model
@@ -41,6 +45,7 @@ parser.add_argument('--loss_file', type=str, default="loss.csv")
 parser.add_argument('--pct_trainset', type=float, default=0.8, help='percentage of dataset in trainset')
 parser.add_argument('--epochs', type=int, default=15, help='number of total training epochs')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size (global)')
+parser.add_argument('--step_size', type=int, default=10, help='scheduler step size (global)')
 parser.add_argument('--lr', type=float, default=0.01, help='initial learning rate')
 parser.add_argument('--weight_decay', type=float, default=5e-4, help='weight decay (wd)')
 parser.add_argument('--fine_tuning',  action='store_true')
@@ -51,7 +56,7 @@ parser.add_argument('--test_model',  action='store_true')
 parser.add_argument('--no-test_model', dest='test_model', action='store_false')
 
 #--other
-parser.add_argument('--num_GNN_layers', type=int, default=2, help='number of GNN layers')
+parser.add_argument('--model_name', type=str)
 parser.add_argument('--checkpoint_ctd', type=str, default='../checkpoint.pth', help='checkpoint to load to continue')
 parser.add_argument('--ctd_training',  action='store_true')
 parser.add_argument('--no-ctd_training', dest='ctd_training', action='store_false')
@@ -92,10 +97,15 @@ if __name__ == '__main__':
     
     #-- define the model
     #model = Model(input_size=25)
-    if args.num_GNN_layers == 3:
-        model = Model_3GNN(input_size=25)
-    else:
-        model = Model_2GNN(input_size=25)
+    #if args.model_name == "":
+    #    model = Model_3GNN(input_size=25)
+    #elif args.num_GNN_layers == 7:
+    #    model = Model_7GNN(input_size=25)
+    #else:
+    #   model = Model_2GNN(input_size=25)
+
+    Model = getattr(models, args.model_name)
+    model = Model(input_size=25)
 
     #-- either load the model checkpoint or load the parameters for the encoder
     if args.load_ae_checkpoint is True and args.checkpoint_ctd is False:
@@ -109,7 +119,7 @@ if __name__ == '__main__':
         optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=.1)
 
     model, optimizer, trainloader = accelerator.prepare(model, optimizer, trainloader)
 

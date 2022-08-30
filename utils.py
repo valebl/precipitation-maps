@@ -178,7 +178,7 @@ def train_model_multigpu(model, dataloader, loss_fn, optimizer, num_epochs,
         checkpoint = torch.load(checkpoint_ctd)
         model.load_state_dict(checkpoint["parameters"])
         optimizer.load_state_dict(checkpoint["optimizer"])
-        epoch_start = checkpoint["epoch"]
+        epoch_start = checkpoint["epoch"] + 1
         #loss = checkpoint["loss"]
 
     model.train()
@@ -235,8 +235,10 @@ def test_model(model, dataloader, accelerator, log_path, log_file, loss_fn=None)
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])
     
-    fin_loss = loss_meter.sum if loss_fn is not None else None
+    fin_loss_total = loss_meter.sum if loss_fn is not None else None
+    fin_loss_avg = loss_meter.avg if loss_fn is not None else None
     if accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
-            f.write(f"\nTESTING - loss {fin_loss if fin_loss is not None else '--'}") 
-    return fin_loss
+            f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
+                    +"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}") 
+    return fin_loss_total, fin_loss_avg 
