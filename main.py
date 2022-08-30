@@ -14,8 +14,10 @@ from dataset import Clima_dataset, custom_collate_fn
 #from models import CNN_GNN_7layers_SAGEConv as Model_7SAGEConv
 #from models import CNN_GNN_7layers_GATConv as Model_7GATConv
 import models
-from utils import train_epoch_multigpu_CNN_GNN as train_epoch
-from utils import train_model_multigpu as train
+import utils
+
+#from utils import train_epoch_multigpu_CNN_GNN as train_epoch
+#from utils import train_model_multigpu as train
 from utils import load_encoder_checkpoint, load_model_checkpoint, test_model
 
 from accelerate import Accelerator
@@ -57,6 +59,9 @@ parser.add_argument('--no-test_model', dest='test_model', action='store_false')
 
 #--other
 parser.add_argument('--model_name', type=str)
+parser.add_argument('--train_fn', type=str, default="train_model_multigpu")
+parser.add_argument('--epoch_fn', type=str, default="train_epoch_multigpu_CNN_GNN")
+parser.add_argument('--test_fn', type=str, default="test_model")
 parser.add_argument('--checkpoint_ctd', type=str, default='../checkpoint.pth', help='checkpoint to load to continue')
 parser.add_argument('--ctd_training',  action='store_true')
 parser.add_argument('--no-ctd_training', dest='ctd_training', action='store_false')
@@ -107,6 +112,10 @@ if __name__ == '__main__':
     Model = getattr(models, args.model_name)
     model = Model(input_size=25)
 
+    train = getattr(utils, args.train_fn)
+    train_epoch = getattr(utils, args.epoch_fn)
+    test = getattr(utils, args.test_fn)
+
     #-- either load the model checkpoint or load the parameters for the encoder
     if args.load_ae_checkpoint is True and args.checkpoint_ctd is False:
         model = load_encoder_checkpoint(model, args.checkpoint_encoder_file, accelerator, args.log_path, args.log_file, fine_tuning=args.fine_tuning)
@@ -121,7 +130,7 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=.1)
 
-    model, optimizer, trainloader = accelerator.prepare(model, optimizer, trainloader)
+    model, optimizer, trainloader, testloader = accelerator.prepare(model, optimizer, trainloader, testloader)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     if accelerator.is_main_process: 
@@ -143,7 +152,7 @@ if __name__ == '__main__':
 
     #-- test the model
     if test_model:
-        test_loss = test_model(model, testloader, accelerator, args.log_path, args.log_file, loss_fn=loss_fn)
+        test(model, testloader, accelerator, args.log_path, args.log_file, loss_fn=loss_fn)
         accelerator.print(f"\nDONE! :) with test loss = {test_loss}")
     else:
         accelerator.print("\nDone!")
