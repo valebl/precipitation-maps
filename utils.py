@@ -171,10 +171,10 @@ def train_model_multigpu(model, dataloader, loss_fn, optimizer, num_epochs,
     if ctd_training:
         checkpoint = torch.load(checkpoint_ctd)
         model.load_state_dict(checkpoint["parameters"])
-        optimizer.load_state_dict(checkpoint["optimizer"])
+        #optimizer.load_state_dict(checkpoint["optimizer"])
         epoch_start = checkpoint["epoch"] + 1
         #loss = checkpoint["loss"]
-
+    
     model.train()
     # epoch loop
     for epoch in range(epoch_start, epoch_start + num_epochs):

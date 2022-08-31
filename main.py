@@ -155,8 +155,8 @@ if __name__ == '__main__':
 
     #-- test the model
     if test_model:
-        test(model, testloader, accelerator, args.log_path, args.log_file, loss_fn=loss_fn)
-        accelerator.print(f"\nDONE! :) with test loss = {test_loss}")
+        test_loss_total, test_loss_avg = test(model, testloader, accelerator, args.log_path, args.log_file, loss_fn=loss_fn)
+        accelerator.print(f"\nDONE! :) with test loss = {test_loss_avg}")
     else:
         accelerator.print("\nDone!")
 
