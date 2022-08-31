@@ -19,6 +19,7 @@ import utils
 #from utils import train_epoch_multigpu_CNN_GNN as train_epoch
 #from utils import train_model_multigpu as train
 from utils import load_encoder_checkpoint, load_model_checkpoint, test_model
+from utils import check_freezed_layers
 
 from accelerate import Accelerator
 
@@ -124,7 +125,7 @@ if __name__ == '__main__':
 
     #-- train the model
     loss_fn = nn.functional.mse_loss
-    if args.fine_tuning:
+    if args.load_ae_checkpoint and args.fine_tuning:
         optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
@@ -136,6 +137,8 @@ if __name__ == '__main__':
     if accelerator.is_main_process: 
         with open(args.log_path+args.log_file, 'a') as f:
             f.write(f"\nTotal number of trainable parameters: {total_params}.")
+
+    check_freezed_layers(model, args.log_path, args.log_file, accelerator)
 
     start = time.time()
 
