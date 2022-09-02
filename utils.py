@@ -122,7 +122,9 @@ def train_epoch_multigpu_CNN_GNN(model, dataloader, loss_fn, optimizer,
 #------TRAIN ON SINGLE-GPU------  
 
 def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
-        log_path, log_file, train_epoch, lr_scheduler=None, checkpoint_name="checkpoint.pth", loss_name="loss.csv"):
+        log_path, log_file, train_epoch, lr_scheduler=None,
+        checkpoint_name="checkpoint.pth", loss_name="loss.csv",
+        save_interval=1):
 
     model.train()
     # epoch loop
@@ -139,7 +141,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         with open(log_path+log_file, 'a') as f:
             f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.4f}.")
 
-        if epoch % 5 == 0 and epoch != num_epochs-1:
+        if (epoch+1) % save_interval == 0 and (epoch+1) != num_epochs:
             np.savetxt('loss.csv', loss_meter.avg_list)
             checkpoint_dict = {
                 "parameters": model.state_dict(),
@@ -164,7 +166,9 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
 
 def train_model_multigpu(model, dataloader, loss_fn, optimizer, num_epochs,
         accelerator, log_path, log_file, train_epoch, lr_scheduler=None, 
-        checkpoint_name="checkpoint.pth", loss_name="loss.csv", ctd_training=False, checkpoint_ctd="../checkpoint.pth"):
+        checkpoint_name="checkpoint.pth", loss_name="loss.csv",
+        ctd_training=False, checkpoint_ctd="../checkpoint.pth",
+        save_interval=1):
     
     epoch_start = 0
 
@@ -192,7 +196,7 @@ def train_model_multigpu(model, dataloader, loss_fn, optimizer, num_epochs,
             with open(log_path+log_file, 'a') as f:
                 f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.4f}.")
         
-        if accelerator.is_main_process and epoch % 5 == 0 and epoch != num_epochs-1:
+        if accelerator.is_main_process and (epoch+1) % save_interval == 0 and (epoch+1) != num_epochs:
             np.savetxt(loss_name, loss_meter.avg_list)
             checkpoint_dict = {
                 "parameters": model.state_dict(),
