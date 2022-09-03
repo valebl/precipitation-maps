@@ -77,8 +77,8 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer,
     
     for X, _ in dataloader:
         optimizer.zero_grad()
-        target = model(X)
-        loss = loss_fn(X, target)
+        X_pred = model(X)
+        loss = loss_fn(X_pred, X)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(),5)
         optimizer.step()
@@ -99,8 +99,8 @@ def train_epoch_ae_multigpu(model, dataloader, loss_fn, optimizer,
     
     for X, _ in dataloader:
         optimizer.zero_grad()
-        target = model(X)
-        loss = loss_fn(X, target)
+        X_pred = model(X)
+        loss = loss_fn(X_pred, X)
         accelerator.backward(loss)
         #torch.nn.utils.clip_grad_norm_(model.parameters(),5)
         optimizer.step()
@@ -230,7 +230,7 @@ def test_model_ae(model, dataloader, accelerator, log_path, log_file, loss_fn=No
     with torch.no_grad():
         for X, data in dataloader:
             X_pred = model(X)
-            loss = loss_fn(X, X_pred) if loss_fn is not None else None
+            loss = loss_fn(X_pred, X) if loss_fn is not None else None
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])
     
@@ -251,7 +251,7 @@ def test_model(model, dataloader, accelerator, log_path, log_file, loss_fn=None)
     with torch.no_grad():
         for X, data in dataloader:
             y_pred, y = model(X, data, accelerator.device)
-            loss = loss_fn(y, y_pred) if loss_fn is not None else None
+            loss = loss_fn(y_pred, y) if loss_fn is not None else None
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])
     
