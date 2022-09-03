@@ -20,26 +20,19 @@ def dual_conv(in_channel, out_channel, kernel_size=3, padding=1):
 # crop the image(tensor) to equal size
 # as shown in architecture image , half left side image is concated with right side image
 def crop_tensor(target_tensor, tensor):
-    target_size2 = target_tensor.size()[2]
-    tensor_size2 = tensor.size()[2]
-    delta2 = tensor_size2 - target_size2
-    delta2 = delta2 // 2
-    target_size3 = target_tensor.size()[3]
-    tensor_size3 = tensor.size()[3]
-    delta3 = tensor_size3 - target_size3
-    delta3 = delta3 // 2
-    target_size4 = target_tensor.size()[4]
-    tensor_size4 = tensor.size()[4]
-    delta4 = tensor_size4 - target_size4
-    delta4 = delta4 // 2
-    assert tensor_size2 >= target_size2
-    assert tensor_size3 >= target_size3
-    assert tensor_size4 >= target_size4
-    return tensor[:, :, delta2:tensor_size2-delta2, delta3:tensor_size3-delta3, delta4:tensor_size4-delta4]  # [:, : , 1:3, 1:3]
+
+    target_sizes = target_tensor.size()[2:]    
+    tensor_sizes = tensor.size()[2:]
+    delta = tensor_sizes - target_sizes
+    delta = delta // 2    
+    assert tensor_sizes[0] >= target_sizes[0] and tensor_sizes[1] >= target_sizes[1] and tensor_sizes[2] >= target_sizes[2]
+   
+    return tensor[:, :, delta[0]:tensor_sizes[0]-delta[0], delta[1]:tensor_sizes[1]-delta[1], delta[2]:tensor_sizes[2]-delta[2]]
+
 
 class Unet(nn.Module):
     def __init__(self, input_channels=25):
-        super(Unet, self).__init__()
+        super(Unet, self).__init__()            
 
         # Left side (contracting path)
         self.dwn_conv1 = dual_conv(input_channels, 64)
