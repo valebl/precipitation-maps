@@ -9,29 +9,37 @@ from torch_geometric.data import Data, Batch
 
 class Clima_dataset(Dataset):
 
-    def _load_data_into_memory(self, path, input_file, target_file, data_file, idx_file):
+    def _load_data_into_memory(self, path, input_file, target_file, data_file, idx_file, type):
         with open(path + input_file, 'rb') as f:
             input = pickle.load(f) # input.shape = (n_levels, lon_dim, lat_dim, time_year_dim)
-        with open(path + target_file, 'rb') as f:
-            target = pickle.load(f)
-        with open(path + data_file, 'rb') as f:
-            data = pickle.load(f)
         with open(path + idx_file,'rb') as f:
             idx_to_key = pickle.load(f)
+        if type == "cnn" or type == "gnn":
+            with open(path + target_file, 'rb') as f:
+                target = pickle.load(f)
+        else:
+            target = None
+        if type == "gnn":
+            with open(path + data_file, 'rb') as f:
+                data = pickle.load(f)
+        else:
+            data = None
+
         return input, target, data, idx_to_key
 
-    def __init__(self, path, input_file, target_file, data_file, idx_file, **kwargs):
+    def __init__(self, path, input_file, target_file, data_file, idx_file, type="gnn", **kwargs):
         super().__init__()
         self.PAD = 2
         self.LAT_DIM = 43
         self.LON_DIM = 49
         self.SPACE_IDXS_DIM = self.LAT_DIM * self.LON_DIM
 
+        self.type = type
         self.path = path
         self.input_file, self.target_file, self.data_file, self.idx_file = input_file, target_file, data_file, idx_file
 
         self.input, self.target, self.data, self.idx_to_key = self._load_data_into_memory(self.path,
-                self.input_file, self.target_file, self.data_file, self.idx_file)
+                self.input_file, self.target_file, self.data_file, self.idx_file, self.type)
         self.length = len(self.idx_to_key)
 
     def __len__(self):
@@ -46,17 +54,36 @@ class Clima_dataset(Dataset):
         #-- derive input
         input = self.input[:, time_idx - 25 : time_idx, lat_idx + self.PAD - 2 : lat_idx + self.PAD + 4, lon_idx + self.PAD - 2 : lon_idx + self.PAD + 4]
         #-- derive gnn data
-        edge_index = torch.tensor(self.data[space_idx]['edge_index'])
-        x = torch.tensor(self.data[space_idx]['x'])
-        y = torch.tensor(self.target[k])
-        data = Data(x=x, edge_index=edge_index, y=y)
-        return input, data
+        if self.type == "cnn" or self.type == "gnn":
+            y = torch.tensor(self.target[k])
+            if self.type == "cnn":
+                return input, y
+            else:
+                edge_index = torch.tensor(self.data[space_idx]['edge_index'])
+                x = torch.tensor(self.data[space_idx]['x'])
+                data = Data(x=x, edge_index=edge_index, y=y)
+                return input, data
+        else:
+            return input
 
-def custom_collate_fn(batch):
+def custom_collate_fn_ae(batch):
+    input = np.array(batch)
+    input = default_convert(input)
+    input.requires_grad = True
+    return input
+
+def custom_collate_fn_cnn(batch):
+    input = np.array([item[0] for item in batch])
+    y = np.array([item[1] for item in batch])
+    input = default_convert(input)
+    y = default_convert(y)
+    input.requires_grad = True
+    y.requires_grad = True
+    return input, y
+
+def custom_collate_fn_gnn(batch):
     input = np.array([item[0] for item in batch])
     data = [item[1] for item in batch]
     input = default_convert(input)
     input.requires_grad = True
-    #data = Batch.from_data_list(data)
-    #data = default_convert(data)
-    return [input, data]
+    return input, data
