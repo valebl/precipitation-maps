@@ -60,31 +60,36 @@ def tweedie_loss(y_pred, y, p=1.5):
 def use_gpu_if_possible():
     return "cuda:0" if torch.cuda.is_available() else "cpu"
 
-
-def load_encoder_checkpoint(model, checkpoint, log_path, log_file, fine_tuning=True, accelerator=None):
-    state_dict = torch.load(checkpoint)
+def load_encoder_checkpoint(model, checkpoint, log_path, log_file, fine_tuning=True, accelerator=None, net_name='encoder'):
+    with open(log_path+log_file, 'a') as f:
+        f.write("\nLoading encoder parameters.")
+    checkpoint = torch.load(checkpoint)
+    state_dict = checkpoint["parameters"]
     for name, param in state_dict.items():
-        if 'encoder' in name:
+        #with open(log_path+log_file, 'a') as f:
+        #   f.write(f"\n{name}, {net_name in name}")
+        if net_name in name:
             if accelerator is None or accelerator.is_main_process:
                 with open(log_path+log_file, 'a') as f:
                     f.write(f"\nLoading parameters '{name}'")
             param = param.data
-            layer = name.partition("module.")[2]
-            model.state_dict()[layer].copy_(param)
+            #layer = name.partition("module.")[2]
+            model.state_dict()[name].copy_(param)
     if not fine_tuning:
-        [param.requires_grad_(False) for name, param in model.named_parameters() if 'encoder' in name]
+        [param.requires_grad_(False) for name, param in model.named_parameters() if net_name in name]
     return model
 
 
 def load_model_checkpoint(model, checkpoint, log_path, log_file, accelerator=None):
-    state_dict = torch.load(checkpoint)
+    checkpoint = torch.load(checkpoint)
+    state_dict = checkpoint["parameters"]
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
             f.write(f"\nLoading checkpoint")
     for name, param in state_dict.items():
         param = param.data
-        layer = name.partition("module.")[2]
-        model.state_dict()[layer].copy(param)
+        #layer = name.partition("module.")[2]
+        model.state_dict()[name].copy(param)
     return model
 
 

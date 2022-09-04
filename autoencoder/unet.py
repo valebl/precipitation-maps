@@ -17,8 +17,7 @@ def dual_conv(in_channel, out_channel, kernel_size=3, padding=1):
     )
     return conv
 
-# crop the image(tensor) to equal size
-# as shown in architecture image , half left side image is concated with right side image
+# crop the left tensor to the same size of the right tensor (for concatenation)
 def crop_tensor(target_tensor, tensor):
 
     target_sizes = target_tensor.size()[2:]    
@@ -41,8 +40,7 @@ class Unet(nn.Module):
         self.dwn_conv4 = dual_conv(256, 512)
         self.dwn_conv5 = dual_conv(512, 1024)
         self.maxpool = nn.MaxPool3d(kernel_size=2, stride=2, padding=1)
-        self.dwn_conv6 = dual_conv(64,32)
-
+        
         #Right side  (expansion path)
         #transpose convolution is used showna as green arrow in architecture image
         self.trans1 = nn.ConvTranspose3d(1024,512, kernel_size=2, stride= 2, padding=1)
