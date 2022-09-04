@@ -8,41 +8,31 @@ import torch
 from torch import nn
 import importlib
 
-from dataset import Clima_dataset, custom_collate_fn
-#from models import CNN_GNN_2layers_SAGEConv as Model_2SAGEConv
-#from models import CNN_GNN_3layers_SAGEConv as Model_3SAGEConv
-#from models import CNN_GNN_7layers_SAGEConv as Model_7SAGEConv
-#from models import CNN_GNN_7layers_GATConv as Model_7GATConv
+import dataset
 import models
 import utils
-
-#from utils import train_epoch_multigpu_CNN_GNN as train_epoch
-#from utils import train_model_multigpu as train
-from utils import load_encoder_checkpoint, load_model_checkpoint, test_model
-from utils import check_freezed_layers
+from utils import load_encoder_checkpoint, load_model_checkpoint, check_freezed_layers
 
 from accelerate import Accelerator
-
-accelerator = Accelerator()
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 #-- paths
-parser.add_argument('--input_path', type=str, help='root path to input dataset')
-parser.add_argument('--log_path', type=str, default=os.getcwd(), help='log saving path')
+parser.add_argument('--input_path', type=str, help='path to input directory')
+parser.add_argument('--output_path', type=str, default=os.getcwd(), help='path to output directory')
 
 #-- input files
 parser.add_argument('--input_file', type=str, default="input_standard.pkl")
-parser.add_argument('--gnn_data_file', type=str, default="gnn_data_standard.pkl")
-parser.add_argument('--gnn_target_file', type=str, default="gnn_target_2015-2016.pkl")
+parser.add_argument('--data_file', type=str, default="gnn_data_standard.pkl")
+parser.add_argument('--target_file', type=str, default="gnn_target_2015-2016.pkl")
 parser.add_argument('--idx_file', type=str, default="idx_to_key_2015-2016.pkl")
 parser.add_argument('--checkpoint_encoder_file', type=str, default="checkpoint_ae.pth")
 parser.add_argument('--checkpoint_input_file', type=str, default="checkpoint_input.pth")
 
 #-- output files
-parser.add_argument('--log_file', type=str, default='log.txt', help='log file')
-parser.add_argument('--checkpoint_file', type=str, default="checkpoint.pth")
-parser.add_argument('--loss_file', type=str, default="loss.csv")
+parser.add_argument('--out_log_file', type=str, default='log.txt', help='log file')
+parser.add_argument('--out_checkpoint_file', type=str, default="checkpoint.pth")
+parser.add_argument('--out_loss_file', type=str, default="loss.csv")
 
 #-- training hyperparameters
 parser.add_argument('--pct_trainset', type=float, default=0.8, help='percentage of dataset in trainset')
@@ -58,14 +48,21 @@ parser.add_argument('--no-load_ae_checkpoint', dest='load_checkpoint', action='s
 parser.add_argument('--test_model',  action='store_true')
 parser.add_argument('--no-test_model', dest='test_model', action='store_false')
 
-#--other
-parser.add_argument('--model_name', type=str)
-parser.add_argument('--train_fn', type=str, default="train_model_multigpu")
-parser.add_argument('--epoch_fn', type=str, default="train_epoch_multigpu_CNN_GNN")
-parser.add_argument('--test_fn', type=str, default="test_model")
+#-- boolean
 parser.add_argument('--checkpoint_ctd', type=str, default='../checkpoint.pth', help='checkpoint to load to continue')
 parser.add_argument('--ctd_training',  action='store_true')
 parser.add_argument('--no-ctd_training', dest='ctd_training', action='store_false')
+parser.add_argument('--use_accelerate',  action='store_true')
+parser.add_argument('--no-use_accelerate', dest='use_accelerate', action='store_false')
+
+#-- other
+parser.add_argument('--model_name', type=str)
+parser.add_argument('--loss_fn', type=str, default="mse_loss")
+parser.add_argument('--train_fn', type=str, default="train_model_multigpu")
+parser.add_argument('--epoch_fn', type=str, default="train_epoch_multigpu_CNN_GNN")
+parser.add_argument('--test_fn', type=str, default="test_model")
+parser.add_argument('--dataset_name', type=str, default="Clima_dataset")
+parser.add_argument('--collate_fn_name', type=str, default="custom_collate_fn")
 
 
 if __name__ == '__main__':
@@ -74,19 +71,34 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    with open(args.log_path+args.log_file, 'w') as f:
-        f.write(f'\nStarting on with pct_trainset={args.pct_trainset}, lr={args.lr} and epochs={args.epochs}.'+
+    Model = getattr(models, args.model_name)
+    Dataset = getattr(dataset, args.dataset_name)
+    custom_collate_fn = getattr(dataset, args.collate_fn_name)
+    train = getattr(utils, args.train_fn)
+    train_epoch = getattr(utils, args.epoch_fn)
+    test = getattr(utils, args.test_fn)
+    loss_fn = getattr(nn.functional, args.loss_fn)
+
+    if args.use_accelerate is True:
+        accelerator = Accelerator()
+    else:
+        accelerator = None
+
+    if accelerator is None or accelerator.is_main_process:
+        with open(args.output_path+args.out_log_file, 'w') as f:
+            f.write(f'\nStarting on with pct_trainset={args.pct_trainset}, lr={args.lr} and epochs={args.epochs}.'+
                 f'\nThere are {torch.cuda.device_count()} available GPUs.')
         
     #-- create the dataset
-    dataset = Clima_dataset(path=args.input_path, input_file=args.input_file, data_file=args.gnn_data_file, target_file=args.gnn_target_file, idx_file=args.idx_file)
+    dataset = Dataset(path=args.input_path, input_file=args.input_file, data_file=args.data_file,
+        target_file=args.target_file, idx_file=args.idx_file)
 
     #-- split into trainset and testset
     len_trainset = int(len(dataset) * args.pct_trainset)
     len_testset = len(dataset) - len_trainset
     
-    if accelerator.is_main_process:
-        with open(args.log_path+args.log_file, 'a') as f:
+    if accelerator is None or accelerator.is_main_process:
+        with open(args.output_path+args.out_log_file, 'a') as f:
             f.write(f'\nTrainset size = {len_trainset}, testset size = {len_testset}.')
 
     generator=torch.Generator().manual_seed(42)
@@ -96,66 +108,54 @@ if __name__ == '__main__':
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0, collate_fn=custom_collate_fn)
     testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=0, collate_fn=custom_collate_fn)
 
-    if accelerator.is_main_process:
+    if accelerator is None or accelerator.is_main_process:
         total_memory, used_memory, free_memory = map(int, os.popen('free -t -m').readlines()[-1].split()[1:])
-        with open(args.log_path+args.log_file, 'a') as f:
+        with open(args.output_path+args.out_log_file, 'a') as f:
             f.write(f"\nRAM memory {round((used_memory/total_memory) * 100, 2)} %")
     
-    #-- define the model
-    #model = Model(input_size=25)
-    #if args.model_name == "":
-    #    model = Model_3GNN(input_size=25)
-    #elif args.num_GNN_layers == 7:
-    #    model = Model_7GNN(input_size=25)
-    #else:
-    #   model = Model_2GNN(input_size=25)
-
-    Model = getattr(models, args.model_name)
-    model = Model(input_size=25)
-
-    train = getattr(utils, args.train_fn)
-    train_epoch = getattr(utils, args.epoch_fn)
-    test = getattr(utils, args.test_fn)
+    model = Model()
 
     #-- either load the model checkpoint or load the parameters for the encoder
     if args.load_ae_checkpoint is True and args.checkpoint_ctd is False:
-        model = load_encoder_checkpoint(model, args.checkpoint_encoder_file, accelerator, args.log_path, args.log_file, fine_tuning=args.fine_tuning)
+        model = load_encoder_checkpoint(model, args.checkpoint_encoder_file, accelerator, args.output_path, args.out_log_file, fine_tuning=args.fine_tuning)
     elif args.load_ae_checkpoint is True and args.checkpoint_ctd is True:
         raise RuntimeError("Either load the ae parameters or continue the training.")
 
-    #-- train the model
-    loss_fn = nn.functional.mse_loss
+    #-- define the optimizer and trainable parameters
     if args.load_ae_checkpoint and args.fine_tuning:
         optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=.1)
 
-    model, optimizer, trainloader, testloader = accelerator.prepare(model, optimizer, trainloader, testloader)
+    if accelerator is not None:
+        model, optimizer, trainloader, testloader = accelerator.prepare(model, optimizer, trainloader, testloader)
+    else:
+        model = model.cuda()
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    if accelerator.is_main_process: 
-        with open(args.log_path+args.log_file, 'a') as f:
+    if accelerator is None or accelerator.is_main_process: 
+        with open(args.output_path+args.out_log_file, 'a') as f:
             f.write(f"\nTotal number of trainable parameters: {total_params}.")
 
-    check_freezed_layers(model, args.log_path, args.log_file, accelerator)
+    check_freezed_layers(model, args.output_path, args.out_log_file, accelerator)
 
     start = time.time()
 
     total_loss, loss_list = train(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
-        num_epochs=args.epochs, accelerator=accelerator, log_path=args.log_path, log_file=args.log_file, lr_scheduler=scheduler,
-        checkpoint_name=args.log_path+args.checkpoint_file, loss_name=args.log_path+args.loss_file, train_epoch=train_epoch,
+        num_epochs=args.epochs, accelerator=accelerator, log_path=args.output_path, log_file=args.out_log_file, lr_scheduler=scheduler,
+        checkpoint_name=args.output_path+args.out_checkpoint_file, loss_name=args.output_path+args.out_loss_file, train_epoch=train_epoch,
         ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd)
 
     end = time.time()
 
-    if accelerator.is_main_process:
-        with open(args.log_path+args.log_file, 'a') as f:
+    if accelerator is None or accelerator.is_main_process:
+        with open(args.output_path+args.out_log_file, 'a') as f:
             f.write(f"\nTraining _cnn_gnn completed in {end - start} seconds.")
 
     #-- test the model
-    if test_model:
-        test_loss_total, test_loss_avg = test(model, testloader, accelerator, args.log_path, args.log_file, loss_fn=loss_fn)
+    if args.test_model:
+        test_loss_total, test_loss_avg = test(model, testloader, accelerator, args.output_path, args.out_log_file, loss_fn=loss_fn)
         accelerator.print(f"\nDONE! :) with test loss = {test_loss_avg}")
     else:
         accelerator.print("\nDone!")
