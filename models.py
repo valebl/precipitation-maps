@@ -132,10 +132,10 @@ def dual_conv(in_channel, out_channel, kernel_size=3, padding=1):
 # crop the left tensor to the same size of the right tensor (for concatenation)
 def crop_tensor(target_tensor, tensor):
 
-    target_sizes = target_tensor.size()[2:]    
-    tensor_sizes = tensor.size()[2:]
-    delta = tensor_sizes - target_sizes
-    delta = delta // 2    
+    target_sizes = list(target_tensor.shape[2:])
+    tensor_sizes = list(tensor.shape[2:])
+    delta = [(tensor_sizes[i] - target_sizes[i]) // 2 for i in range(len(target_sizes))]
+
     assert tensor_sizes[0] >= target_sizes[0] and tensor_sizes[1] >= target_sizes[1] and tensor_sizes[2] >= target_sizes[2]
    
     return tensor[:, :, delta[0]:tensor_sizes[0]-delta[0], delta[1]:tensor_sizes[1]-delta[1], delta[2]:tensor_sizes[2]-delta[2]]

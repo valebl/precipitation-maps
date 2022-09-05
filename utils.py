@@ -13,14 +13,14 @@ class AverageMeter(object):
     '''
     def __init__(self):
         self.reset()
+        self.avg_list = []
+        self.avg_iter_list = []
 
     def reset(self):
         self.val = 0
         self.avg = 0
         self.sum = 0
         self.count = 0
-        self.avg_list = []
-        self.avg_iter_list = []
 
     def update(self, val, n=1):
         self.val = val
@@ -121,6 +121,7 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerato
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
         loss_meter.add_iter_loss()
+        
 
 def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
 
@@ -174,9 +175,11 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         #loss = checkpoint["loss"]
     
     model.train()
+    loss_meter = AverageMeter()
+
     # epoch loop
     for epoch in range(epoch_start, epoch_start + num_epochs):
-        loss_meter = AverageMeter()
+        loss_meter.reset()
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
                 f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.5f}")
@@ -192,6 +195,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         
         if accelerator is None or accelerator.is_main_process and (epoch+1) % save_interval == 0 and (epoch+1) != num_epochs:
             np.savetxt(loss_name, loss_meter.avg_list)
+            np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
             checkpoint_dict = {
                 "parameters": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -202,6 +206,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
 
     if accelerator is None or accelerator.is_main_process:
         np.savetxt(loss_name, loss_meter.avg_list)
+        np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
         checkpoint_dict = {
             "parameters": model.state_dict(),
             "optimizer": optimizer.state_dict(),
