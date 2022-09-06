@@ -237,6 +237,7 @@ class Conv_predictor(nn.Module):
 def linear(in_features, out_features):
     lin = nn.Sequential(
         nn.Linear(in_features, out_features)
+        #nn.ReLU(inplace=True)
     )
     return lin
 
@@ -256,7 +257,8 @@ class Mean_regressor(nn.Module):
         self.flatten = nn.Flatten() # 12288
 
         #Regressor
-        self.regr1 = linear(12288, 1)
+        self.regr_conv1 = linear(12288, 1)
+
         
     def forward(self, image):
 
@@ -277,6 +279,64 @@ class Mean_regressor(nn.Module):
         y = torch.exp(y)
 
         return y
+
+def conv(in_channel, out_channel, kernel_size, padding):
+    conv = nn.Sequential(
+        nn.Conv3d(in_channel, out_channel, kernel_size=kernel_size, padding=padding),
+        nn.BatchNorm3d(out_channel),
+        nn.ReLU(inplace= True)
+    )
+    return conv
+
+class Mean_cnn_regressor(nn.Module):
+    def __init__(self, input_channels=25):
+        super(Mean_regressor, self).__init__()            
+
+        self.maxpool = nn.MaxPool3d(kernel_size=2, stride=2, padding=1)        
+
+        # Encoder (contracting path) -> this is the same of the Unet model
+        self.dwn_conv1 = dual_conv(input_channels, 64)
+        self.dwn_conv2 = dual_conv(64, 128)
+        self.dwn_conv3 = dual_conv(128, 256)
+        self.dwn_conv4 = dual_conv(256, 512)
+        self.dwn_conv5 = dual_conv(512, 1024)
+        #self.flatten = nn.Flatten() # 12288
+
+        #Regressor
+        self.regr_conv1 = conv(1024, 512)
+        self.regr_conv2 = conv(512,256)
+        self.regr_conv3 = conv(256,128)
+        self.regr_conv4 = conv(128, 64)
+        self.regr_conv5 = conv(64, 24)
+        self.regr_lin1 = linear(192,1)
+
+    def forward(self, image):
+
+        #forward pass for Encoder
+        y = self.dwn_conv1(image)
+        y = self.maxpool(y)
+        y = self.dwn_conv2(y)
+        y = self.maxpool(y)
+        y = self.dwn_conv3(y)
+        y = self.maxpool(y)
+        y = self.dwn_conv4(y)
+        y = self.maxpool(y)
+        y = self.dwn_conv5(y)
+        y = self.flatten(y)
+
+        #forward pass for Regressor
+        y = self.regr_conv1(y)
+        y = self.maxpool(y)
+        y = self.regr_conv2(y)
+        y = self.maxpool(y)
+        y = self.regr_conv3(y)
+        y = self.maxpool(y)
+        y = self.regr_conv4(y)
+        y = self.maxpool(y)
+        y = self.regr_conv5(y)
+        y = self.regr_lin1(y)
+
+        return torch.exp(y)
 
 
 ##########################################################
