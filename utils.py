@@ -62,8 +62,9 @@ def accuracy(nn_output, ground_truth, k=1):
 
 
 def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, fine_tuning=True, net_name='encoder'):
-    with open(log_path+log_file, 'a') as f:
-        f.write("\nLoading encoder parameters.") 
+    if accelerator is None or accelerator.is_main_process:
+        with open(log_path+log_file, 'a') as f:
+            f.write("\nLoading encoder parameters.") 
     checkpoint = torch.load(checkpoint)
     state_dict = checkpoint["parameters"]
     for name, param in state_dict.items():
@@ -136,7 +137,7 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
             loss.backward()
         else:
             accelerator.backward(loss)
-        #torch.nn.utils.clip_grad_norm_(model.parameters(),5)
+        torch.nn.utils.clip_grad_norm_(model.parameters(),5)
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
         loss_meter.add_iter_loss()
@@ -243,7 +244,7 @@ def test_model_ae(model, dataloader, log_path, log_file, accelerator, loss_fn=No
                     +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}")
     return fin_loss_total, fin_loss_avg
 
-def test_model_cnn(model, dataloader, log_path, log_file, accelerator=None, loss_fn=None):
+def test_model_cnn(model, dataloader, log_path, log_file, accelerator, loss_fn=None):
     if loss_fn is not None:
         loss_meter = AverageMeter()
 
@@ -267,7 +268,7 @@ def test_model_cnn(model, dataloader, log_path, log_file, accelerator=None, loss
     return fin_loss_total, fin_loss_avg
 
 
-def test_model_gnn(model, dataloader, accelerator, log_path, log_file, loss_fn=None):
+def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=None):
     if loss_fn is not None:
         loss_meter = AverageMeter()
 

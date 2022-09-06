@@ -1,7 +1,6 @@
 import numpy as np
 import xarray as xr
 import pickle
-import matplotlib.pyplot as plt
 import time
 
 TIME_DIM = 140256
@@ -29,7 +28,7 @@ j_list = np.arange(j_start, j_end, 1)
 
 idx_space_sel = np.array([[i * len(lon_era5_list) + j for j in j_list] for i in i_list])
 
-with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED_BIS/gnn_target_2015-2016.pkl', 'rb') as f:
+with open('/home/vblasone/PREPROCESSED/gnn_target.pkl', 'rb') as f:
     target = pickle.load(f)
 
 print(f"\nLat range = {lat_min_sel}-{lat_max_sel}, Lon range = {lon_min_sel}-{lon_max_sel}. Starting the processing.")
@@ -47,9 +46,9 @@ for i in range(len(lat_era5_list)):
 
 print(f"\nLen of reduced target = {len(target.keys())}. Starting to write the file.")
 
-with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED_BIS/gnn_target_fvg.pkl', 'wb') as f:
+with open('/home/vblasone/PREPROCESSED/fvg/gnn_target_fvg.pkl', 'wb') as f:
     pickle.dump(target, f)
 
 idx_to_key = np.sort(np.array(list(target.keys())))
-with open('/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED_BIS/idx_to_key_fvg.pkl', 'wb') as f:
+with open('/home/vblasone/PREPROCESSED/fvg/idx_to_key_fvg.pkl', 'wb') as f:
     pickle.dump(idx_to_key, f)

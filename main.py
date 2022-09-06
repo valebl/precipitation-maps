@@ -12,7 +12,7 @@ import models
 import utils
 import dataset
 
-from utils import load_encoder_checkpoint, load_model_checkpoint, check_freezed_layers
+from utils import load_encoder_checkpoint, check_freezed_layers
 from utils import train_model
 from dataset import Clima_dataset as Dataset
 
@@ -22,15 +22,14 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 
 #-- paths
 parser.add_argument('--input_path', type=str, help='path to input directory')
-parser.add_argument('--output_path', type=str, default=os.getcwd(), help='path to output directory')
+parser.add_argument('--output_path', type=str, help='path to output directory')
 
 #-- input files
 parser.add_argument('--input_file', type=str, default="input_standard.pkl")
 parser.add_argument('--data_file', type=str, default=None)
 parser.add_argument('--target_file', type=str, default=None)
-parser.add_argument('--idx_file', type=str, default="idx_to_key.pkl")
-parser.add_argument('--checkpoint_encoder_file', type=str, default="checkpoint_ae.pth")
-parser.add_argument('--checkpoint_input_file', type=str, default="checkpoint_input.pth")
+parser.add_argument('--idx_file', type=str)
+parser.add_argument('--checkpoint_ae_file', type=str)
 
 #-- output files
 parser.add_argument('--out_log_file', type=str, default='log.txt', help='log file')
@@ -47,10 +46,10 @@ parser.add_argument('--weight_decay', type=float, default=5e-4, help='weight dec
 parser.add_argument('--fine_tuning',  action='store_true')
 parser.add_argument('--no-fine_tuning', dest='fine_tuning', action='store_false')
 parser.add_argument('--load_ae_checkpoint',  action='store_true')
-parser.add_argument('--no-load_ae_checkpoint', dest='load_checkpoint', action='store_false')
+parser.add_argument('--no-load_ae_checkpoint', dest='load_ae_checkpoint', action='store_false')
 
 #-- boolean
-parser.add_argument('--checkpoint_ctd', type=str, default='../checkpoint.pth', help='checkpoint to load to continue')
+parser.add_argument('--checkpoint_ctd', type=str, help='checkpoint to load to continue')
 parser.add_argument('--ctd_training',  action='store_true')
 parser.add_argument('--no-ctd_training', dest='ctd_training', action='store_false')
 parser.add_argument('--use_accelerate',  action='store_true')
@@ -91,7 +90,7 @@ if __name__ == '__main__':
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'w') as f:
-            f.write(f'Cuda is available: {torch.cuda.is_available()}.\nStarting on with pct_trainset={args.pct_trainset}, lr={args.lr} and epochs={args.epochs}.'+
+            f.write(f'Cuda is available: {torch.cuda.is_available()}.\nStarting with pct_trainset={args.pct_trainset}, lr={args.lr} and epochs={args.epochs}.'+
                 f'\nThere are {torch.cuda.device_count()} available GPUs.')
         
     #-- create the dataset
@@ -121,9 +120,10 @@ if __name__ == '__main__':
     model = Model()
 
     #-- either load the model checkpoint or load the parameters for the encoder
-    if args.load_ae_checkpoint is True and args.checkpoint_ctd is False:
-        model = load_encoder_checkpoint(model, args.checkpoint_encoder_file, accelerator, args.output_path, args.out_log_file, fine_tuning=args.fine_tuning)
-    elif args.load_ae_checkpoint is True and args.checkpoint_ctd is True:
+    if args.load_ae_checkpoint is True and args.ctd_training is False:
+        model = load_encoder_checkpoint(model, args.checkpoint_ae_file, args.output_path, args.out_log_file, accelerator,
+                fine_tuning=args.fine_tuning, net_name="dwn_conv")
+    elif args.load_ae_checkpoint is True and args.ctd_training is True:
         raise RuntimeError("Either load the ae parameters or continue the training.")
 
     #-- define the optimizer and trainable parameters
@@ -160,8 +160,8 @@ if __name__ == '__main__':
 
     #-- test the model
     if args.test_model:
-        test_loss_total, test_loss_avg = test_model(model, testloader, accelerator, args.output_path, args.out_log_file, loss_fn=loss_fn)
-    
+        test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator, loss_fn=loss_fn)
+
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
             f.write(f"\nDONE! :)")
