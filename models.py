@@ -279,7 +279,7 @@ class Mean_regressor(nn.Module):
 
         return y
 
-def conv(in_channel, out_channel, kernel_size, padding):
+def conv(in_channel, out_channel, kernel_size=3, padding=1):
     conv = nn.Sequential(
         nn.Conv3d(in_channel, out_channel, kernel_size=kernel_size, padding=padding),
         nn.BatchNorm3d(out_channel),
@@ -289,17 +289,17 @@ def conv(in_channel, out_channel, kernel_size, padding):
 
 class Mean_cnn_regressor(nn.Module):
     def __init__(self, input_channels=25):
-        super(Mean_regressor, self).__init__()            
+        super(Mean_cnn_regressor, self).__init__()            
 
         self.maxpool = nn.MaxPool3d(kernel_size=2, stride=2, padding=1)        
+        self.flatten = nn.Flatten()
 
         # Encoder (contracting path) -> this is the same of the Unet model
         self.dwn_conv1 = dual_conv(input_channels, 64)
         self.dwn_conv2 = dual_conv(64, 128)
         self.dwn_conv3 = dual_conv(128, 256)
         self.dwn_conv4 = dual_conv(256, 512)
-        self.dwn_conv5 = dual_conv(512, 1024)
-        #self.flatten = nn.Flatten() # 12288
+        self.dwn_conv5 = dual_conv(512, 1024)       
 
         #Regressor
         self.regr_conv1 = conv(1024, 512)
@@ -321,7 +321,6 @@ class Mean_cnn_regressor(nn.Module):
         y = self.dwn_conv4(y)
         y = self.maxpool(y)
         y = self.dwn_conv5(y)
-        y = self.flatten(y)
 
         #forward pass for Regressor
         y = self.regr_conv1(y)
@@ -333,9 +332,10 @@ class Mean_cnn_regressor(nn.Module):
         y = self.regr_conv4(y)
         y = self.maxpool(y)
         y = self.regr_conv5(y)
+        y = self.flatten(y)
         y = self.regr_lin1(y)
 
-        return torch.exp(y)
+        return torch.log(torch.exp(y)+1)
 
 
 ##########################################################
@@ -579,3 +579,55 @@ class GATConv_2(nn.Module):
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
         return y_pred, data_batch.y
+
+
+class Unet_GNN(nn.Module):
+    def __init__(self, input_channels=25, hidden_features=1024):
+        super().__init__()
+
+        # Encoder (contracting path) -> this is the same of the Unet model
+        self.dwn_conv1 = dual_conv(input_channels, 64)
+        self.dwn_conv2 = dual_conv(64, 128)
+        self.dwn_conv3 = dual_conv(128, 256)
+        self.dwn_conv4 = dual_conv(256, 512)
+        self.dwn_conv5 = dual_conv(512, 1024)
+        self.maxpool = nn.MaxPool3d(kernel_size=2, stride=2, padding=1)
+        self.flatten = nn.Flatten() # 1228
+
+        #gnn
+        self.gnn = geometric_nn.Sequential('x, edge_index', [
+            (GATConv(3+12288, hidden_features, aggr='mean'),  'x, edge_index -> x'), # max, mean, add ...
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
+            (GATConv(hidden_features, 1, aggr='mean'), 'x, edge_index -> x'), # max, mean, add ...
+            ])
+
+    def forward(self, X_batch, data_batch, device): # data_batch is a list of Data objects
+
+        #forward pass for Encoder
+        encoding = self.dwn_conv1(X_batch.cuda())
+        encoding = self.maxpool(encoding)
+        encoding = self.dwn_conv2(encoding)
+        encoding = self.maxpool(encoding)
+        encoding = self.dwn_conv3(encoding)
+        encoding = self.maxpool(encoding)
+        encoding = self.dwn_conv4(encoding)
+        encoding = self.maxpool(encoding)
+        encoding = self.dwn_conv5(encoding)
+        encoding = self.flatten(encoding)
+
+        for i, data in enumerate(data_batch):
+            data = data.to(device)
+            features = torch.zeros((data.num_nodes, 3 + encoding.shape[1])).to(device)
+            features[:,:3] = data.x[:,:3]
+            features[:,3:] = encoding[i,:]
+            data.__setitem__('x', features)
+        data_batch = Batch.from_data_list(data_batch)
+        y_pred = self.gnn(data_batch.x, data_batch.edge_index)
+
+        return torch.log(torch.exp(y_pred)+1), data_batch.y
+
+

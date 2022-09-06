@@ -131,13 +131,13 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
             X = X.cuda()
             y = y.cuda()
         optimizer.zero_grad()
-        y_pred = model(X).squeeze()
+        y_pred = model(X)
         loss = loss_fn(y_pred, y)
         if accelerator is None:
             loss.backward()
         else:
             accelerator.backward(loss)
-        torch.nn.utils.clip_grad_norm_(model.parameters(),5)
+        #torch.nn.utils.clip_grad_norm_(model.parameters(),5)
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
         loss_meter.add_iter_loss()
@@ -145,7 +145,7 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
 def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
 
     for X, data in dataloader:
-        device = accelerator.device if accelerator is None else 'cuda'
+        device = 'cuda' if accelerator is None else accelerator.device
         optimizer.zero_grad()
         y_pred, y = model(X, data, device)
         loss = loss_fn(y_pred, y)
@@ -275,7 +275,7 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
     model.eval()
     with torch.no_grad():
         for X, data in dataloader:
-            device = accelerator.device if accelerator is None else 'cuda'
+            device = 'cuda' if accelerator is None else accelerator.device
             y_pred, y = model(X, data, device)
             loss = loss_fn(y_pred, y) if loss_fn is not None else None
             if loss_fn is not None:
