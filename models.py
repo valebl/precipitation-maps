@@ -236,8 +236,7 @@ class Conv_predictor(nn.Module):
 
 def linear(in_features, out_features):
     lin = nn.Sequential(
-        nn.Linear(in_features, out_features)
-        #nn.ReLU(inplace=True)
+        nn.Linear(in_features, out_features),
     )
     return lin
 
