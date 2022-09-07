@@ -122,10 +122,10 @@ def dual_conv(in_channel, out_channel, kernel_size=3, padding=1):
     conv = nn.Sequential(
         nn.Conv3d(in_channel, out_channel, kernel_size=kernel_size, padding=padding),
         nn.BatchNorm3d(out_channel),
-        nn.ReLU(inplace= True),
+        nn.ReLU(),
         nn.Conv3d(out_channel, out_channel, kernel_size=kernel_size, padding=padding),
         nn.BatchNorm3d(out_channel),
-        nn.ReLU(inplace= True)
+        nn.ReLU()
     )
     return conv
 
@@ -283,7 +283,7 @@ def conv(in_channel, out_channel, kernel_size=3, padding=1):
     conv = nn.Sequential(
         nn.Conv3d(in_channel, out_channel, kernel_size=kernel_size, padding=padding),
         nn.BatchNorm3d(out_channel),
-        nn.ReLU(inplace= True)
+        nn.LeakyReLU()
     )
     return conv
 
