@@ -61,6 +61,14 @@ def accuracy(nn_output, ground_truth, k=1):
     return acc
 
 
+def weighted_mse_loss(input_batch, target_batch, device='cuda'):
+    weights = torch.tensor([1, 2, 5, 10, 20, 50]).to(device)
+    weight = torch.ones((target_batch.shape), device=device)
+    for i, target in enumerate(target_batch):
+        weight[i] = weights[0] if target <=1 else 2 if target <= 5 else 5 if target <= 10 else 10 if target <= 20 else 50
+    return (weight * (input_batch - target_batch) ** 2).sum() / weight.sum()
+
+
 def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, fine_tuning=True, net_name='encoder'):
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
@@ -131,7 +139,7 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
             X = X.cuda()
             y = y.cuda()
         optimizer.zero_grad()
-        y_pred = model(X)
+        y_pred = model(X).squeeze()
         loss = loss_fn(y_pred, y)
         if accelerator is None:
             loss.backward()
@@ -194,8 +202,6 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             with open(log_path+log_file, 'a') as f:
                 f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.4f}.")
         
-        if accelerator is None or accelerator.is_main_process and (epoch+1) % save_interval == 0 and (epoch+1) != num_epochs:
-            np.savetxt(loss_name, loss_meter.avg_list)
             np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
             checkpoint_dict = {
                 "parameters": model.state_dict(),
