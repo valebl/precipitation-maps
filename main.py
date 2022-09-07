@@ -78,10 +78,15 @@ if __name__ == '__main__':
         os.makedirs(args.output_path)
 
     Model = getattr(models, args.model_name)
-    loss_fn = getattr(nn.functional, args.loss_fn)
+    #loss_fn = getattr(nn.functional, args.loss_fn)
     train_epoch = getattr(utils, "train_epoch_"+args.net_type)
     test_model = getattr(utils, "test_model_"+args.net_type)
     custom_collate_fn = getattr(dataset, "custom_collate_fn_"+args.net_type)
+
+    if args.loss_fn == 'weighted_mse_loss':
+        loss_fn = getattr(utils, args.loss_fn)
+    else:
+        loss_fn = getattr(nn.functional, args.loss_fn)
 
     if args.use_accelerate is True:
         accelerator = Accelerator()
@@ -160,7 +165,7 @@ if __name__ == '__main__':
 
     #-- test the model
     if args.test_model:
-        test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator, loss_fn=loss_fn)
+        test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator, loss_fn=nn.functional.mse_loss)
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
