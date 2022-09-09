@@ -63,6 +63,75 @@ class CNN_GRU(nn.Module):
         #return torch.log(torch.exp(out)+1) 
 
 
+class CNN_GRU_stacked(nn.Module):
+    def __init__(self, input_size=5, input_dim=160, hidden_dim=160, output_dim=32, n_layers=4):
+        super().__init__()        
+        self.encoder = nn.Sequential(
+            nn.Conv2d(input_size, 64, kernel_size=3, padding=(1,1), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, padding=(1,1), stride=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, padding=1, stride=2),   
+            nn.Conv2d(64, 256, kernel_size=3, padding=(0,0)),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, padding=1, stride=2),   
+            nn.Flatten(),
+            nn.Linear(1024, 576),
+            nn.BatchNorm1d(576),
+            nn.ReLU(),
+            nn.Linear(576, output_dim),
+            nn.BatchNorm1d(output_dim),
+            nn.ReLU()            
+            )   
+
+        # define the decoder modules
+        self.gru = nn.Sequential(
+            nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True),        
+            )
+
+        self.decoder = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(hidden_dim*25, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Linear(128, 1),
+            nn.Sigmoid()
+            )
+
+    def forward(self, X):
+
+        embedding_q = torch.zeros((X.shape[0],25,32)).cuda()
+        embedding_t = torch.zeros((X.shape[0],25,32)).cuda()
+        embedding_u = torch.zeros((X.shape[0],25,32)).cuda()
+        embedding_v = torch.zeros((X.shape[0],25,32)).cuda()
+        embedding_z = torch.zeros((X.shape[0],25,32)).cuda()
+
+        for i in range(25):
+            X_q = torch.squeeze(torch.squeeze(X[:,:,0,i,:,:], 3), 2)
+            X_t = torch.squeeze(torch.squeeze(X[:,:,1,i,:,:], 3), 2)
+            X_u = torch.squeeze(torch.squeeze(X[:,:,2,i,:,:], 3), 2)
+            X_v = torch.squeeze(torch.squeeze(X[:,:,3,i,:,:], 3), 2)
+            X_z = torch.squeeze(torch.squeeze(X[:,:,4,i,:,:], 3), 2)
+
+            embedding_q[:,i,:] = self.encoder(X_q)
+            embedding_t[:,i,:] = self.encoder(X_t)
+            embedding_u[:,i,:] = self.encoder(X_u)
+            embedding_v[:,i,:] = self.encoder(X_v)
+            embedding_z[:,i,:] = self.encoder(X_z)     
+            
+            embedding = torch.cat((embedding_q,embedding_t,embedding_u,embedding_v,embedding_z),2).cuda() # shape(batch_size, time_size, 32)
+
+        out, h = self.gru(embedding)
+        out = self.decoder(out)
+        return out
+
+
 class Conv_autoencoder(nn.Module):
     def __init__(self, input_size=25):
         super().__init__()
