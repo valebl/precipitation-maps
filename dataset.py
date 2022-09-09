@@ -14,7 +14,7 @@ class Clima_dataset(Dataset):
             input = pickle.load(f) # input.shape = (n_levels, lon_dim, lat_dim, time_year_dim)
         with open(path + idx_file,'rb') as f:
             idx_to_key = pickle.load(f)
-        if net_type == "cnn" or net_type == "gnn":
+        if net_type == "cnn" or net_type == "gnn" or net_type == "gru":
             with open(path + target_file, 'rb') as f:
                 target = pickle.load(f)
         else:
@@ -30,9 +30,10 @@ class Clima_dataset(Dataset):
     def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, **kwargs):
         super().__init__()
         self.PAD = 2
-        self.LAT_DIM = 43
+        self.LAT_DIM = 43 # number of points in the GRIPHO rectangle (0.25 grid)
         self.LON_DIM = 49
         self.SPACE_IDXS_DIM = self.LAT_DIM * self.LON_DIM
+        self.SHIFT = 2 # relative shift between GRIPHO and ERA5 (idx=0 in ERA5 corresponds to 2 in GRIPHO)
 
         self.net_type = net_type
         self.path = path
@@ -52,11 +53,14 @@ class Clima_dataset(Dataset):
         lat_idx = space_idx // self.LON_DIM
         lon_idx = space_idx % self.LON_DIM
         #-- derive input
-        input = self.input[:, time_idx - 25 : time_idx, lat_idx + self.PAD - 2 : lat_idx + self.PAD + 4, lon_idx + self.PAD - 2 : lon_idx + self.PAD + 4]
+        input = self.input[:, time_idx - 25 : time_idx, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         #-- derive gnn data
-        if self.net_type == "cnn" or self.net_type == "gnn":
+        if self.net_type == "cnn" or self.net_type == "gnn" or self.net_type == "gru":
             y = torch.tensor(self.target[k])
-            if self.net_type == "cnn":
+            if self.net_type == "gru":
+                input = input.reshape(5, 5, input.shape[1], input.shape[2], input.shape[3]) # levels, variables, lat, lon
+                return input, y
+            elif self.net_type == "cnn":
                 return input, y
             else:
                 edge_index = torch.tensor(self.data[space_idx]['edge_index'])
@@ -88,3 +92,11 @@ def custom_collate_fn_gnn(batch):
     input.requires_grad = True
     return input, data
     
+def custom_collate_fn_gru(batch):
+    input = np.array([item[0] for item in batch])
+    y = np.array([item[1] for item in batch])
+    input = default_convert(input)
+    y = default_convert(y)
+    input.requires_grad = True
+    y.requires_grad = True
+    return input, y

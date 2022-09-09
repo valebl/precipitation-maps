@@ -65,8 +65,19 @@ def weighted_mse_loss(input_batch, target_batch, device='cuda'):
     weights = torch.tensor([1, 2, 5, 10, 20, 50]).to(device)
     weight = torch.ones((target_batch.shape), device=device)
     for i, target in enumerate(target_batch):
-        weight[i] = weights[0] if target <=1 else 2 if target <= 5 else 5 if target <= 10 else 10 if target <= 20 else 50
+        weight[i] = weights[0] if target <= 2 else weights[1] if target <= 5 else weights[2] if target <= 10 else weights[3] if target <= 20 else weights[5]
+        #weight[i] = weights[0] if target <= 0.01 else weights[1] if target <= 0.1 else weights[2] if target <= 0.5 else weights[3] if target <= 1 else weights[4] if target <= 5 else weights[5]
     return (weight * (input_batch - target_batch) ** 2).sum() / weight.sum()
+
+def mse_loss_mod(input_batch, target_batch, alpha=0.25,  device='cuda'):
+    return ((input_batch - target_batch) ** 2).sum() / input_batch.shape[0] + alpha * ((torch.log(input_batch+10e-9) - torch.log(target_batch+10e-9)) ** 2).sum() / input_batch.shape[0]
+
+def r2_score(output, target):
+    target_mean = torch.mean(target)
+    ss_tot = torch.sum((target - target_mean) ** 2)
+    ss_res = torch.sum((target - output) ** 2)
+    r2 = 1 - ss_res / ss_tot
+    return r2
 
 
 def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, fine_tuning=True, net_name='encoder'):
@@ -166,6 +177,10 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         loss_meter.update(val=loss.item(), n=X.shape[0])    
         loss_meter.add_iter_loss()    
 
+def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
+    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator)
+
+
 #------ TRAIN ------  
 
 def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
@@ -191,7 +206,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         loss_meter.reset()
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
-                f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.5f}")
+                f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.8f}")
         start_time = time.time()
         train_epoch(model, dataloader, loss_fn, optimizer, loss_meter, accelerator)
         end_time = time.time()
@@ -200,8 +215,9 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             lr_scheduler.step()
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
-                f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.4f}.")
+                f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}.")
         
+            np.savetxt(loss_name, loss_meter.avg_list)
             np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
             checkpoint_dict = {
                 "parameters": model.state_dict(),
@@ -254,23 +270,31 @@ def test_model_cnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
     if loss_fn is not None:
         loss_meter = AverageMeter()
 
+    y_pred_list = []
+    y_list = []
     model.eval()
     with torch.no_grad():
         for X, y in dataloader:
+            y_list = [y_list.append(yi) for yi in y]
+            y_list = torch.tensor(y_list)
             if accelerator is None:
                 X = X.cuda()
                 y = y.cuda()
             y_pred = model(X).squeeze()
+            y_pred_list = [y_pred_list.append(yi) for yi in y_pred.cpu()]
+            y_pred_list = torch.tensor(y_pred_list)
             loss = loss_fn(y_pred, y) if loss_fn is not None else None
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])
 
+    R2 = r2_score(y_pred_list, y_list)
     fin_loss_total = loss_meter.sum if loss_fn is not None else None
     fin_loss_avg = loss_meter.avg if loss_fn is not None else None
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
             f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
-                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}")
+                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}"
+                    +f" R2 = {R2}")
     return fin_loss_total, fin_loss_avg
 
 
@@ -294,3 +318,44 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
             f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
                     +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}") 
     return fin_loss_total, fin_loss_avg 
+
+def test_model_gru(model, dataloader, log_path, log_file, accelerator, loss_fn=None):
+    if loss_fn is not None:
+        loss_meter = AverageMeter()
+    
+    #y_pred_list = []
+    #y_list = []
+    model.eval()
+    with torch.no_grad():
+        #i = 0
+        for X, y in dataloader:
+            #print(y)
+            #y_list = [y_list.append(yi) for yi in y.numpy()]
+            if accelerator is None:
+                X = X.cuda()
+                y = y.cuda()
+            y_pred = model(X).squeeze()
+            #print(y_pred)
+            #y_pred_list = [y_pred_list.append(yi) for yi in y_pred.cpu().numpy()]
+            loss = loss_fn(y_pred, y) if loss_fn is not None else None
+            if loss_fn is not None:
+                loss_meter.update(loss.item(), X.shape[0])
+            #if i == 0:
+            #    with open(log_path+log_file, 'a') as f: 
+            #        f.write(f"y: {y}\ny_pred: {y_pred}")
+            #i += 1
+    
+    #print(y_list)
+    #y_list = torch.tensor(y_list)
+    #y_pred_list = torch.tensor(y_pred_list)
+    #R2 = r2_score(y_pred_list, y_list)
+    fin_loss_total = loss_meter.sum if loss_fn is not None else None
+    fin_loss_avg = loss_meter.avg if loss_fn is not None else None
+    if accelerator is None or accelerator.is_main_process:
+        with open(log_path+log_file, 'a') as f:
+            f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
+                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}")
+                    #+f" R2 = {R2}")
+    return fin_loss_total, fin_loss_avg
+
+    #return test_model_cnn(model, dataloader, log_path, log_file, accelerator, loss_fn)

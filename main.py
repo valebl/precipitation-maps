@@ -83,7 +83,7 @@ if __name__ == '__main__':
     test_model = getattr(utils, "test_model_"+args.net_type)
     custom_collate_fn = getattr(dataset, "custom_collate_fn_"+args.net_type)
 
-    if args.loss_fn == 'weighted_mse_loss':
+    if args.loss_fn == 'weighted_mse_loss' or args.loss_fn == 'mse_loss_mod':
         loss_fn = getattr(utils, args.loss_fn)
     else:
         loss_fn = getattr(nn.functional, args.loss_fn)
@@ -96,7 +96,8 @@ if __name__ == '__main__':
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'w') as f:
             f.write(f'Cuda is available: {torch.cuda.is_available()}.\nStarting with pct_trainset={args.pct_trainset}, lr={args.lr} and epochs={args.epochs}.'+
-                f'\nThere are {torch.cuda.device_count()} available GPUs.')
+                f'\nThere are {torch.cuda.device_count()} available GPUs.'+
+                f'\nModel = {args.model_name}')
         
     #-- create the dataset
     dataset = Dataset(path=args.input_path, input_file=args.input_file, data_file=args.data_file,
@@ -137,6 +138,7 @@ if __name__ == '__main__':
     else:
         optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=.1)
+    #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1, cycle_momentum=False)
 
     if accelerator is not None:
         model, optimizer, trainloader, testloader = accelerator.prepare(model, optimizer, trainloader, testloader)
@@ -165,7 +167,7 @@ if __name__ == '__main__':
 
     #-- test the model
     if args.test_model:
-        test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator, loss_fn=nn.functional.mse_loss)
+        test_loss_total, test_loss_avg = test_model(model, trainloader, args.output_path, args.out_log_file, accelerator, loss_fn=nn.functional.mse_loss)
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
