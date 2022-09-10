@@ -7,6 +7,43 @@ from torch_geometric.nn import SAGEConv, GATConv
 from torch_geometric.data import Data, Batch
 import sys
 
+
+class Conv_Regressor(nn.Module):
+    def __init__(self, input_size=25):
+        super().__init__()
+        #Encoder
+        self.encoder = nn.Sequential(
+            nn.Conv3d(input_size, 64, kernel_size=(3,3,3), padding=(0,1,1), stride=1),
+            nn.BatchNorm3D(64),
+            nn.ReLU(),
+            nn.Conv3d(64, 64, kernel_size=(3,3,3), padding=(0,1,1), stride=1),
+            nn.BatchNorm3D(64),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=(2,2,2), padding=(1,1,1), stride=1),
+            nn.Conv3d(64, 128, kernel_size=(3,3,3), padding=(0,1,1), stride=1),
+            nn.BatchNorm3D(128),
+            nn.ReLU(),
+            nn.Conv3d(128, 128, kernel_size=(3,3,3), padding=(0,1,1), stride=1),
+            nn.BatchNorm3D(128),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=(2,2,2), padding=(1,1,1), stride=1),
+            nn.Conv3d(128, 256, kernel_size=(3,3,3), padding=(0,0,0), stride=1),
+            nn.ReLU(),
+            nn.Flatten() # 512
+            )
+        #Decoder
+        self.regressor = nn.Sequential(
+            nn.Linear(512,256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128,1)
+        )
+    def forward(self, X):
+        return self.regressor(self.encoder(X))
+
+
+
 class CNN_GRU(nn.Module):
     def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2):
         super().__init__()        
