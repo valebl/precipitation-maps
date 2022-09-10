@@ -8,7 +8,7 @@ from torch_geometric.data import Data, Batch
 import sys
 
 class CNN_GRU(nn.Module):
-    def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=4):
+    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2):
         super().__init__()        
         self.encoder = nn.Sequential(
             nn.Conv3d(input_size, 64, kernel_size=3, padding=(1,0,0), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
@@ -45,12 +45,12 @@ class CNN_GRU(nn.Module):
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Linear(128, 1),
-            nn.Sigmoid()
+            #nn.Sigmoid()
             )
 
     def forward(self, X):
         #print(X.shape)
-        embedding = torch.zeros((X.shape[0],25,128)).cuda()
+        embedding = torch.zeros((X.shape[0],25,256)).cuda()
         #print(embedding.shape)
         for i in range(25):
             x = torch.squeeze(X[:,:,:,i,:,:], 3)
@@ -64,7 +64,7 @@ class CNN_GRU(nn.Module):
 
 
 class CNN_GRU_stacked(nn.Module):
-    def __init__(self, input_size=5, input_dim=160, hidden_dim=160, output_dim=32, n_layers=4):
+    def __init__(self, input_size=5, input_dim=160, hidden_dim=160, output_dim=32, n_layers=2):
         super().__init__()        
         self.encoder = nn.Sequential(
             nn.Conv2d(input_size, 64, kernel_size=3, padding=(1,1), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
@@ -101,7 +101,7 @@ class CNN_GRU_stacked(nn.Module):
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Linear(128, 1),
-            nn.Sigmoid()
+            #nn.Sigmoid()
             )
 
     def forward(self, X):
@@ -113,11 +113,11 @@ class CNN_GRU_stacked(nn.Module):
         embedding_z = torch.zeros((X.shape[0],25,32)).cuda()
 
         for i in range(25):
-            X_q = torch.squeeze(torch.squeeze(X[:,:,0,i,:,:], 3), 2)
-            X_t = torch.squeeze(torch.squeeze(X[:,:,1,i,:,:], 3), 2)
-            X_u = torch.squeeze(torch.squeeze(X[:,:,2,i,:,:], 3), 2)
-            X_v = torch.squeeze(torch.squeeze(X[:,:,3,i,:,:], 3), 2)
-            X_z = torch.squeeze(torch.squeeze(X[:,:,4,i,:,:], 3), 2)
+            X_q = torch.squeeze(torch.squeeze(X[:,0,:,i,:,:], 3), 1)
+            X_t = torch.squeeze(torch.squeeze(X[:,1,:,i,:,:], 3), 1)
+            X_u = torch.squeeze(torch.squeeze(X[:,2,:,i,:,:], 3), 1)
+            X_v = torch.squeeze(torch.squeeze(X[:,3,:,i,:,:], 3), 1)
+            X_z = torch.squeeze(torch.squeeze(X[:,4,:,i,:,:], 3), 1)
 
             embedding_q[:,i,:] = self.encoder(X_q)
             embedding_t[:,i,:] = self.encoder(X_t)
@@ -129,6 +129,7 @@ class CNN_GRU_stacked(nn.Module):
 
         out, h = self.gru(embedding)
         out = self.decoder(out)
+        out = torch.log(torch.exp(out)+1)
         return out
 
 

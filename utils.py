@@ -327,7 +327,7 @@ def test_model_gru(model, dataloader, log_path, log_file, accelerator, loss_fn=N
     #y_list = []
     model.eval()
     with torch.no_grad():
-        #i = 0
+        i = 0
         for X, y in dataloader:
             #print(y)
             #y_list = [y_list.append(yi) for yi in y.numpy()]
@@ -340,10 +340,10 @@ def test_model_gru(model, dataloader, log_path, log_file, accelerator, loss_fn=N
             loss = loss_fn(y_pred, y) if loss_fn is not None else None
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])
-            #if i == 0:
-            #    with open(log_path+log_file, 'a') as f: 
-            #        f.write(f"y: {y}\ny_pred: {y_pred}")
-            #i += 1
+            if i == 0:
+                with open(log_path+log_file, 'a') as f: 
+                    f.write(f"{list(zip(y.detach().cpu().numpy(), y_pred.detach().cpu().numpy()))}")
+            i += 1
     
     #print(y_list)
     #y_list = torch.tensor(y_list)

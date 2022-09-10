@@ -58,7 +58,7 @@ class Clima_dataset(Dataset):
         if self.net_type == "cnn" or self.net_type == "gnn" or self.net_type == "gru":
             y = torch.tensor(self.target[k])
             if self.net_type == "gru":
-                input = input.reshape(5, 5, input.shape[1], input.shape[2], input.shape[3]) # levels, variables, lat, lon
+                input = input.reshape(5, 5, input.shape[1], input.shape[2], input.shape[3]) # variables, levels, lat, lon
                 return input, y
             elif self.net_type == "cnn":
                 return input, y

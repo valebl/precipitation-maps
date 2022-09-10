@@ -97,7 +97,7 @@ if __name__ == '__main__':
         with open(args.output_path+args.out_log_file, 'w') as f:
             f.write(f'Cuda is available: {torch.cuda.is_available()}.\nStarting with pct_trainset={args.pct_trainset}, lr={args.lr} and epochs={args.epochs}.'+
                 f'\nThere are {torch.cuda.device_count()} available GPUs.'+
-                f'\nModel = {args.model_name}')
+                f'\nModel = {args.model_name}, batch size = {args.batch_size}')
         
     #-- create the dataset
     dataset = Dataset(path=args.input_path, input_file=args.input_file, data_file=args.data_file,
@@ -134,7 +134,8 @@ if __name__ == '__main__':
 
     #-- define the optimizer and trainable parameters
     if args.load_ae_checkpoint and args.fine_tuning:
-        optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        #optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=.9)
     else:
         optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=.1)
