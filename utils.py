@@ -192,10 +192,13 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
     epoch_start = 0
 
     if ctd_training:
+        if accelerator is None or accelerator.is_main_process:
+            with open(log_path+log_file, 'a') as f:
+                f.write("\nLoading the checkpoint to continue the training.")
         checkpoint = torch.load(checkpoint_ctd)
         model.load_state_dict(checkpoint["parameters"])
         #optimizer.load_state_dict(checkpoint["optimizer"])
-        epoch_start = checkpoint["epoch"] + 1
+        #epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         #loss = checkpoint["loss"]
     
     model.train()

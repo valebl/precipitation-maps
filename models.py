@@ -8,7 +8,7 @@ from torch_geometric.data import Data, Batch
 import sys
 
 class CNN_GRU(nn.Module):
-    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2):
+    def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2):
         super().__init__()        
         self.encoder = nn.Sequential(
             nn.Conv3d(input_size, 64, kernel_size=3, padding=(1,0,0), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
@@ -26,8 +26,8 @@ class CNN_GRU(nn.Module):
             nn.Linear(2048, 576),
             nn.BatchNorm1d(576),
             nn.ReLU(),
-            nn.Linear(576, 256),
-            nn.BatchNorm1d(256),
+            nn.Linear(576, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU()            
             )   
 
@@ -38,7 +38,7 @@ class CNN_GRU(nn.Module):
 
         self.decoder = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(256*25, 512),
+            nn.Linear(128*25, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, 128),
@@ -50,7 +50,7 @@ class CNN_GRU(nn.Module):
 
     def forward(self, X):
         #print(X.shape)
-        embedding = torch.zeros((X.shape[0],25,256)).cuda()
+        embedding = torch.zeros((X.shape[0],25,128)).cuda()
         #print(embedding.shape)
         for i in range(25):
             x = torch.squeeze(X[:,:,:,i,:,:], 3)
