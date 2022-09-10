@@ -29,7 +29,7 @@ class Clima_dataset(Dataset):
 
     def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, **kwargs):
         super().__init__()
-        self.PAD = 2
+        self.PAD = 4
         self.LAT_DIM = 43 # number of points in the GRIPHO rectangle (0.25 grid)
         self.LON_DIM = 49
         self.SPACE_IDXS_DIM = self.LAT_DIM * self.LON_DIM

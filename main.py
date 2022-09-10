@@ -134,8 +134,8 @@ if __name__ == '__main__':
 
     #-- define the optimizer and trainable parameters
     if args.load_ae_checkpoint and args.fine_tuning:
-        optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-        #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=.9)
+        #optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=.9)
     else:
         optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=.1)
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     #-- test the model
     if args.test_model:
-        test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator, loss_fn=nn.functional.mse_loss)
+        test_loss_total, test_loss_avg = test_model(model, trainloader, args.output_path, args.out_log_file, accelerator, loss_fn=nn.functional.mse_loss)  #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:

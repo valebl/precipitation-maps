@@ -273,31 +273,28 @@ def test_model_cnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
     if loss_fn is not None:
         loss_meter = AverageMeter()
 
-    y_pred_list = []
-    y_list = []
+    i = 0
     model.eval()
     with torch.no_grad():
         for X, y in dataloader:
-            y_list = [y_list.append(yi) for yi in y]
-            y_list = torch.tensor(y_list)
             if accelerator is None:
                 X = X.cuda()
                 y = y.cuda()
             y_pred = model(X).squeeze()
-            y_pred_list = [y_pred_list.append(yi) for yi in y_pred.cpu()]
-            y_pred_list = torch.tensor(y_pred_list)
             loss = loss_fn(y_pred, y) if loss_fn is not None else None
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])
+            if i == 0:
+                with open(log_path+log_file, 'a') as f:
+                    f.write(f"{list(zip(y.detach().cpu().numpy(), y_pred.detach().cpu().numpy()))}")
+            i += 1
 
-    R2 = r2_score(y_pred_list, y_list)
     fin_loss_total = loss_meter.sum if loss_fn is not None else None
     fin_loss_avg = loss_meter.avg if loss_fn is not None else None
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
             f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
-                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}"
-                    +f" R2 = {R2}")
+                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}")
     return fin_loss_total, fin_loss_avg
 
 
