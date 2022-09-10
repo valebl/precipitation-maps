@@ -2,9 +2,9 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn.functional import relu
-from torch_geometric import nn as geometric_nn
-from torch_geometric.nn import SAGEConv, GATConv
-from torch_geometric.data import Data, Batch
+# from torch_geometric import nn as geometric_nn
+# from torch_geometric.nn import SAGEConv, GATConv
+# from torch_geometric.data import Data, Batch
 import sys
 
 
@@ -85,20 +85,15 @@ class CNN_GRU(nn.Module):
             #nn.Sigmoid()
             )
 
-    def forward(self, X):
-        #print(X.shape)
-        embedding = torch.zeros((X.shape[0],25,128)).cuda()
-        #print(embedding.shape)
-        for i in range(25):
-            x = torch.squeeze(X[:,:,:,i,:,:], 3)
-            #print(x.shape)
-            embedding[:,i,:] = self.encoder(x)
-        out, h = self.gru(embedding)
+    def forward(self, X): # X.shape = (batch_size, features, levels, time, lat, lon)
+        batch_size = X.shape[0]
+        X = X.swapaxes(1,3) # (batch_size, time, features, levels, lat, lon)
+        X = X.reshape(X.shape[0] * X.shape[1], 5, 5, X.shape[4], X.shape[5]) # (batch_size, time, features, levels, lat, lon)
+        X = self.encoder(X)
+        X = X.reshape(batch_size,25,128)
+        out, h = self.gru(X)
         out = self.decoder(out)
         return out
-        #sys.exit()
-        #return torch.log(torch.exp(out)+1) 
-
 
 class CNN_GRU_stacked(nn.Module):
     def __init__(self, input_size=5, input_dim=160, hidden_dim=160, output_dim=32, n_layers=2):
@@ -794,3 +789,13 @@ class Unet_GNN(nn.Module):
         return torch.log(torch.exp(y_pred)+1), data_batch.y
 
 
+if __name__ == "__main__":
+
+    model = CNN_GRU()
+    model = model.cuda()
+
+    X = torch.ones((64,5,5,25,6,6)).cuda()
+
+    y = model(X)
+
+    print(y.shape)
