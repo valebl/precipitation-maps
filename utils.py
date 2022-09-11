@@ -191,7 +191,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         log_path, log_file, train_epoch, accelerator, lr_scheduler=None, 
         checkpoint_name="checkpoint.pth", loss_name="loss.csv",
         ctd_training=False, checkpoint_ctd="../checkpoint.pth",
-        save_interval=1, performance=None):
+        save_interval=10, performance=None):
     
     epoch_start = 0
 
