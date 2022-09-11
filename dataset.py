@@ -11,7 +11,12 @@ class Clima_dataset(Dataset):
 
     def _load_data_into_memory(self, path, input_file, target_file, data_file, idx_file, net_type):
         with open(path + input_file, 'rb') as f:
-            input = pickle.load(f) # input.shape = (n_levels, lon_dim, lat_dim, time_year_dim)
+            input = pickle.load(f) # features*levels, time, lat, lon
+            if self.net_type == "gru":
+                s = input.shape
+                input = input.reshape(5, 5, s[1], s[2], s[3]) # features, levels, time, lat, lon
+                input = input.swapaxes(1,2) # features, time, levels, lat, lon
+                input = input.swapaxes(0,1) # time, features, levels, lat, lon
         with open(path + idx_file,'rb') as f:
             idx_to_key = pickle.load(f)
         if net_type == "cnn" or net_type == "gnn" or net_type == "gru":
@@ -29,7 +34,7 @@ class Clima_dataset(Dataset):
 
     def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, **kwargs):
         super().__init__()
-        self.PAD = 4
+        self.PAD = 2
         self.LAT_DIM = 43 # number of points in the GRIPHO rectangle (0.25 grid)
         self.LON_DIM = 49
         self.SPACE_IDXS_DIM = self.LAT_DIM * self.LON_DIM
@@ -53,14 +58,14 @@ class Clima_dataset(Dataset):
         lat_idx = space_idx // self.LON_DIM
         lon_idx = space_idx % self.LON_DIM
         #-- derive input
-        input = self.input[:, time_idx - 25 : time_idx, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
+        if self.net_type == "gru":
+            input = self.input[time_idx - 25 : time_idx, :, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
+        else:
+            input = self.input[:, time_idx - 25 : time_idx, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         #-- derive gnn data
         if self.net_type == "cnn" or self.net_type == "gnn" or self.net_type == "gru":
             y = torch.tensor(self.target[k])
-            if self.net_type == "gru":
-                input = input.reshape(5, 5, input.shape[1], input.shape[2], input.shape[3]) # variables, levels, lat, lon
-                return input, y
-            elif self.net_type == "cnn":
+            if self.net_type == "cnn" or self.net_type == "gru":
                 return input, y
             else:
                 edge_index = torch.tensor(self.data[space_idx]['edge_index'])
