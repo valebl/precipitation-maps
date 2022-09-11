@@ -145,6 +145,8 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerato
 
 def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
 
+    #lr_list = []
+
     for X, y in dataloader:
         if accelerator is None:
             X = X.cuda()
@@ -160,6 +162,14 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
         loss_meter.add_iter_loss()
+        #lr_list.append(lr_scheduler.get_last_lr()[0])
+        #lr_state_dict = lr_scheduler.state_dict()
+        #lr_state_dict["base_lrs"][0] = lr_state_dict["base_lrs"][0] * 1.00105
+        #lr_state_dict["_last_lr"][0] =lr_state_dict["_last_lr"][0] * 1.00105
+        #lr_scheduler.load_state_dict(lr_state_dict)
+
+    #np.savetxt("/work_dir/220911/gru-sum-fvg-0.8-adam-test-lr/lr.csv", lr_list)
+
 
 def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
 
@@ -214,7 +224,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         train_epoch(model, dataloader, loss_fn, optimizer, loss_meter, accelerator)
         end_time = time.time()
         loss_meter.add_loss()
-        if lr_scheduler is not None:
+        if lr_scheduler is not None and lr_scheduler.get_last_lr()[0] > 0.000001:
             lr_scheduler.step()
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
