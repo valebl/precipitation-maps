@@ -45,8 +45,9 @@ class Conv_Regressor(nn.Module):
 
 
 class CNN_GRU(nn.Module):
-    def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2):
-        super().__init__()        
+    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2):
+        super().__init__() 
+        self.output_dim = output_dim
         self.encoder = nn.Sequential(
             nn.Conv3d(input_size, 64, kernel_size=3, padding=(1,0,0), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
             nn.BatchNorm3d(64),
@@ -63,8 +64,8 @@ class CNN_GRU(nn.Module):
             nn.Linear(2048, 576),
             nn.BatchNorm1d(576),
             nn.ReLU(),
-            nn.Linear(576, 128),
-            nn.BatchNorm1d(128),
+            nn.Linear(576, output_dim),
+            nn.BatchNorm1d(output_dim),
             nn.ReLU()            
             )   
 
@@ -75,7 +76,7 @@ class CNN_GRU(nn.Module):
 
         self.decoder = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(128*25, 512),
+            nn.Linear(output_dim*25, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, 128),
@@ -85,12 +86,12 @@ class CNN_GRU(nn.Module):
             #nn.Sigmoid()
             )
 
-    def forward(self, X): # X.shape = (batch_size, features, levels, time, lat, lon)
-        batch_size = X.shape[0]
-        X = X.swapaxes(1,3) # (batch_size, time, features, levels, lat, lon)
-        X = X.reshape(X.shape[0] * X.shape[1], 5, 5, X.shape[4], X.shape[5]) # (batch_size, time, features, levels, lat, lon)
+    def forward(self, X): # X.shape = (batch_size, time, features, levels, lat, lon)
+        # X.shape = (batch_size*time, features, levels, lat, lon)
+        s = X.shape
+        X = X.reshape(s[0]*s[1], s[2], s[3], s[4], s[5])
         X = self.encoder(X)
-        X = X.reshape(batch_size,25,128)
+        X = X.reshape(s[0], s[1], self.output_dim)
         out, h = self.gru(X)
         out = self.decoder(out)
         return out
