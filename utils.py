@@ -39,25 +39,11 @@ def use_gpu_if_possible():
     return "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
-def accuracy(nn_output, ground_truth, k=1):
-    '''
-    Return accuracy@k for the given model output and ground truth
-    nn_output: a tensor of shape (num_datapoints x num_classes) which may 
-       or may not be the output of a softmax or logsoftmax layer
-    ground_truth: a tensor of longs or ints of shape (num_datapoints)
-    k: the 'k' in accuracy@k
-    '''
-    assert k <= nn_output.shape[1], f"k too big. Found: {k}. Max: {nn_output.shape[1]} inferred from the nn_output"
-    # get classes of assignment for the top-k nn_outputs row-wise
-    nn_out_classes = nn_output.topk(k).indices
-    # make ground_truth a column vector
-    ground_truth_vec = ground_truth.unsqueeze(-1)
-    # and repeat the column k times (= reproduce nn_out_classes shape)
-    ground_truth_vec = ground_truth_vec.expand_as(nn_out_classes)
-    # produce tensor of booleans - at which position of the nn output is the correct class located?
-    correct_items = (nn_out_classes == ground_truth_vec)
-    # now getting the accuracy is easy, we just operate the sum of the tensor and divide it by the number of examples
-    acc = correct_items.sum().item() / nn_output.shape[0]
+def accuracy(prediction, target):
+    #prediction_class = torch.sigmoid(prediction)
+    prediction_class = torch.where(prediction > 0.5, 1.0, 0.0) 
+    correct_items = (prediction_class == target)
+    acc = correct_items.sum().item() / prediction.shape[0]
     return acc
 
 
@@ -125,7 +111,7 @@ def check_freezed_layers(model, log_path, log_file, accelerator):
 
 #------EPOCH LOOPS------  
 
-def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
+def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance):
     
     for X in dataloader:
         if accelerator is None:
@@ -143,7 +129,7 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerato
         loss_meter.add_iter_loss()
         
 
-def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
+def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance):
 
     #lr_list = []
 
@@ -162,6 +148,10 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
         loss_meter.add_iter_loss()
+        if performance is not None:
+            perf = performance(y_pred, y)
+            performance_meter.update(val=perf, n=X.shape[0])
+        
         #lr_list.append(lr_scheduler.get_last_lr()[0])
         #lr_state_dict = lr_scheduler.state_dict()
         #lr_state_dict["base_lrs"][0] = lr_state_dict["base_lrs"][0] * 1.00105
@@ -171,7 +161,7 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
     #np.savetxt("/work_dir/220911/gru-sum-fvg-0.8-adam-test-lr/lr.csv", lr_list)
 
 
-def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
+def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance):
 
     for X, data in dataloader:
         device = 'cuda' if accelerator is None else accelerator.device
@@ -186,9 +176,13 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])    
         loss_meter.add_iter_loss()    
+        if performance is not None:
+            perf = performance(y_hat, y)
+            performance_meter.update(val=perf, n=X.shape[0])
 
-def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator):
-    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator)
+
+def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance):
+    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance)
 
 
 #------ TRAIN ------  
@@ -197,7 +191,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         log_path, log_file, train_epoch, accelerator, lr_scheduler=None, 
         checkpoint_name="checkpoint.pth", loss_name="loss.csv",
         ctd_training=False, checkpoint_ctd="../checkpoint.pth",
-        save_interval=1):
+        save_interval=1, performance=None):
     
     epoch_start = 0
 
@@ -213,6 +207,11 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
     
     model.train()
     loss_meter = AverageMeter()
+    if performance is not None:
+        performance_meter = AverageMeter()
+        performance = accuracy
+    else:
+        performance_meter = None
 
     # epoch loop
     for epoch in range(epoch_start, epoch_start + num_epochs):
@@ -221,15 +220,19 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             with open(log_path+log_file, 'a') as f:
                 f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.8f}")
         start_time = time.time()
-        train_epoch(model, dataloader, loss_fn, optimizer, loss_meter, accelerator)
+        train_epoch(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance)
         end_time = time.time()
         loss_meter.add_loss()
         if lr_scheduler is not None and lr_scheduler.get_last_lr()[0] > 0.000001:
             lr_scheduler.step()
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
-                f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}.")
-        
+                if performance is None:
+                    f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}.")
+                else:
+                    f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}; "+
+                            f"Performance: {performance_meter.avg:.10f}")
+
             np.savetxt(loss_name, loss_meter.avg_list)
             np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
             checkpoint_dict = {
@@ -251,7 +254,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             }
         torch.save(checkpoint_dict, checkpoint_name)
     
-    return loss_meter.sum, loss_meter.avg_list
+        return loss_meter.sum, loss_meter.avg_list
 
 
 #------ TEST ------  

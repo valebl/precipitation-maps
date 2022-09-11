@@ -66,7 +66,7 @@ parser.add_argument('--net_type', type=str)
 #parser.add_argument('--test_fn', type=str, default="test_model")
 #parser.add_argument('--dataset_name', type=str, default="Clima_dataset")
 #parser.add_argument('--collate_fn_name', type=str, default="custom_collate_fn")
-
+parser.add_argument('--performance', type=str, default=None)
 
 if __name__ == '__main__':
 
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     total_loss, loss_list = train_model(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
         num_epochs=args.epochs, accelerator=accelerator, log_path=args.output_path, log_file=args.out_log_file, lr_scheduler=scheduler,
         checkpoint_name=args.output_path+args.out_checkpoint_file, loss_name=args.output_path+args.out_loss_file, train_epoch=train_epoch,
-        ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd)
+        ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd, performance=args.performance)
 
     end = time.time()
 
