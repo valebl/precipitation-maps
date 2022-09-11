@@ -34,7 +34,7 @@ class Clima_dataset(Dataset):
 
     def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, **kwargs):
         super().__init__()
-        self.PAD = 4
+        self.PAD = 2
         self.LAT_DIM = 43 # number of points in the GRIPHO rectangle (0.25 grid)
         self.LON_DIM = 49
         self.SPACE_IDXS_DIM = self.LAT_DIM * self.LON_DIM
@@ -59,9 +59,9 @@ class Clima_dataset(Dataset):
         lon_idx = space_idx % self.LON_DIM
         #-- derive input
         if self.net_type == "gru":
-            input = self.input[time_idx - 25 : time_idx, :, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
+            input = self.input[time_idx - 24 : time_idx+1, :, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         else:
-            input = self.input[:, time_idx - 25 : time_idx, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
+            input = self.input[:, time_idx - 24 : time_idx+1, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         #-- derive gnn data
         if self.net_type == "cnn" or self.net_type == "gnn" or self.net_type == "gru":
             y = torch.tensor(self.target[k])

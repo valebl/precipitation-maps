@@ -45,7 +45,7 @@ class Conv_Regressor(nn.Module):
 
 
 class CNN_GRU(nn.Module):
-    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2):
+    def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2):
         super().__init__() 
         self.output_dim = output_dim
         self.encoder = nn.Sequential(
@@ -56,12 +56,12 @@ class CNN_GRU(nn.Module):
             nn.BatchNorm3d(64),
             nn.ReLU(),
             nn.MaxPool3d(kernel_size=2, padding=(1,1,1), stride=2),   
-            nn.Conv3d(64, 256, kernel_size=3, padding=(0,0,0), stride=1),
+            nn.Conv3d(64, 256, kernel_size=3, padding=(1,1,1), stride=1),
             nn.BatchNorm3d(256),
             nn.ReLU(),
             nn.MaxPool3d(kernel_size=2, padding=(1,0,0), stride=2),   
             nn.Flatten(),
-            nn.Linear(1024, 512),
+            nn.Linear(2048, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, output_dim),
