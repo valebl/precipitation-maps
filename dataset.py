@@ -34,7 +34,7 @@ class Clima_dataset(Dataset):
 
     def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, **kwargs):
         super().__init__()
-        self.PAD = 2
+        self.PAD = 4
         self.LAT_DIM = 43 # number of points in the GRIPHO rectangle (0.25 grid)
         self.LON_DIM = 49
         self.SPACE_IDXS_DIM = self.LAT_DIM * self.LON_DIM
@@ -78,7 +78,7 @@ class Clima_dataset(Dataset):
 def custom_collate_fn_ae(batch):
     input = np.array(batch)
     input = default_convert(input)
-    input.requires_grad = True
+    #input.requires_grad = True
     return input
 
 def custom_collate_fn_cnn(batch):
@@ -86,15 +86,15 @@ def custom_collate_fn_cnn(batch):
     y = np.array([item[1] for item in batch])
     input = default_convert(input)
     y = default_convert(y)
-    input.requires_grad = True
-    y.requires_grad = True
+    #input.requires_grad = True
+    #y.requires_grad = True
     return input, y
 
 def custom_collate_fn_gnn(batch):
     input = np.array([item[0] for item in batch])
     data = [item[1] for item in batch]
     input = default_convert(input)
-    input.requires_grad = True
+    #input.requires_grad = True
     return input, data
     
 def custom_collate_fn_gru(batch):
@@ -102,6 +102,7 @@ def custom_collate_fn_gru(batch):
     y = np.array([item[1] for item in batch])
     input = default_convert(input)
     y = default_convert(y)
-    input.requires_grad = True
-    y.requires_grad = True
+    y = y.to(torch.float32)
+    #input.requires_grad = True
+    #y.requires_grad = True
     return input, y
