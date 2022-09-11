@@ -96,6 +96,58 @@ class CNN_GRU(nn.Module):
         out = self.decoder(out)
         return out
 
+class CNN_GRU_classifier(nn.Module):
+    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2):
+        super().__init__() 
+        self.output_dim = output_dim
+        self.encoder = nn.Sequential(
+            nn.Conv3d(input_size, 64, kernel_size=3, padding=(1,0,0), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
+            nn.BatchNorm3d(64),
+            nn.ReLU(),
+            nn.Conv3d(64, 64, kernel_size=3, padding=(1,1,1), stride=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=2, padding=1, stride=2),   
+            nn.Conv3d(64, 256, kernel_size=3, padding=(1,1,1)),
+            nn.BatchNorm3d(256),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=2, padding=1, stride=2),   
+            nn.Flatten(),
+            nn.Linear(2048, 576),
+            nn.BatchNorm1d(576),
+            nn.ReLU(),
+            nn.Linear(576, output_dim),
+            nn.BatchNorm1d(output_dim),
+            nn.ReLU()            
+            )   
+
+        # define the decoder modules
+        self.gru = nn.Sequential(
+            nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True),        
+            )
+
+        self.decoder = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(output_dim*25, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Linear(128, 1),
+            nn.Sigmoid()
+            )
+
+    def forward(self, X): # X.shape = (batch_size, time, features, levels, lat, lon)
+        # X.shape = (batch_size*time, features, levels, lat, lon)
+        s = X.shape
+        X = X.reshape(s[0]*s[1], s[2], s[3], s[4], s[5])
+        X = self.encoder(X)
+        X = X.reshape(s[0], s[1], self.output_dim)
+        out, h = self.gru(X)
+        out = self.decoder(out)
+        return out
+
 class CNN_GRU_stacked(nn.Module):
     def __init__(self, input_size=5, input_dim=160, hidden_dim=160, output_dim=32, n_layers=2):
         super().__init__()        
