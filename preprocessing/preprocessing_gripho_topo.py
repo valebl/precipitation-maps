@@ -15,7 +15,7 @@ def select_from_gripho(lon_min, lon_max, lat_min, lat_max, lon, lat, pr, geo):
 if __name__ == '__main__':
 
     log_file = "/m100_work/ICT22_ESP_0/vblasone/rainfall-maps/.log/prep_data_gnn.txt"
-    output_path = "/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED_BIS/"
+    output_path = "/m100_work/ICT22_ESP_0/vblasone/PREPROCESSED_220912/"
 
     TIME_DIM = 140256
     SPATIAL_POINTS_DIM = 2107
@@ -38,8 +38,8 @@ if __name__ == '__main__':
     pr = gripho.pr.to_numpy()
     geo = topo.z.to_numpy()
 
-    lon_era5_list = np.arange(LON_MIN, LON_MAX, INTERVAL)
-    lat_era5_list = np.arange(LAT_MIN, LAT_MAX, INTERVAL)
+    lon_coarse_grid_gripho_array = np.arange(LON_MIN, LON_MAX, INTERVAL)
+    lat_coarse_grid_gripho_array = np.arange(LAT_MIN, LAT_MAX, INTERVAL)
 
     with open(log_file, 'w') as f:
         f.write(f"\nStarting the preprocessing.")
@@ -48,13 +48,13 @@ if __name__ == '__main__':
     gnn_data = {}
     start = time.time()
     
-    for i, lat_era5 in enumerate(lat_era5_list):
-        for j, lon_era5 in enumerate(lon_era5_list):
-            idx_space = i * lon_era5_list.shape[0] + j
+    for i, lat_coarse_grid in enumerate(lat_coarse_grid_gripho_array):
+        for j, lon_coarse_gris in enumerate(lon_coarse_grid_gripho_array):
+            idx_space = i * lon_coarse_grid_gripho_array.shape[0] + j
             
-            # consider the cell with (lat_era5, lon_era5) as top-left corner
+            # consider the cell with (lat_era5, lon_era5) as bottom-left corner
             selected_lon, selected_lat, selected_pr, selected_geo = select_from_gripho( 
-                lon_era5, lon_era5+INTERVAL, lat_era5, lat_era5+INTERVAL, lon, lat, pr, geo)
+                lon_coarse_grid, lon_coarse_grid+INTERVAL, lat_coarse_grid, lat_coarse_grid+INTERVAL, lon, lat, pr, geo)
 
             assert selected_lon.shape == selected_geo.shape
             
@@ -89,26 +89,22 @@ if __name__ == '__main__':
 
                 x = np.stack((selected_lon_italy, selected_lat_italy, selected_geo_italy), axis=-1)
                 edge_index = np.empty((2,0), dtype=int)
-                ii = 0
-                for xi in x:
-                    jj = 0
-                    for xj in x:
+        
+                for ii, xi in enumerate(x):
+                    for jj, xj in enumerate(x):
                         if not np.array_equal(xi, xj) and np.abs(xi[0] - xj[0]) < LON_DIFF_MAX and np.abs(xi[1] - xj[1]) < LAT_DIFF_MAX:
                             edge_index = np.concatenate((edge_index, np.array([[ii], [jj]])), axis=-1, dtype=int)
-                        jj += 1
-                    ii += 1
                 gnn_data[(idx_space)] = {'x': x, 'edge_index': edge_index}
 
                 for t in range(TIME_DIM):
-                        idx = t * 2107 + idx_space
-                        if not np.isnan(selected_pr_italy[t]).any():
-                            pr_t = selected_pr_italy[t]
-                            y = pr_t.reshape(pr_t.shape[0],1)
-                            gnn_target[idx] = y
-            j += 1
+                    idx = t * SPATIAL_POINTS_DIM + idx_space
+                    if not np.isnan(selected_pr_italy[t]).any():
+                        pr_t = selected_pr_italy[t]
+                        y = pr_t.reshape(pr_t.shape[0],1)
+                        gnn_target[idx] = y
+
         with open(log_file, 'a') as f:
             f.write(f"\nFinished latitude = {lat_era5} in {time.time() - start} seconds")
-        i += 1   
 
     with open(log_file, 'a') as f:
         f.write(f"\nPreprocessing took {time.time() - start} seconds")    

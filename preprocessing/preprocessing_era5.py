@@ -13,17 +13,17 @@ if __name__ == '__main__':
     N_VARS = 5
     PAD = 2
     TIME_DIM = 140256
-    LON_MIN = 6.5
-    LON_MAX = 18.75
-    LAT_MIN = 36.5
-    LAT_MAX =  47.25
-    INTERVAL = 0.25
+    #LON_MIN = 6.5
+    #LON_MAX = 18.75
+    #LAT_MIN = 36.5
+    #LAT_MAX =  47.25
+    #INTERVAL = 0.25
 
-    LON_LIST = np.arange(LON_MIN, LON_MAX, INTERVAL)
-    LAT_LIST = np.arange(LAT_MIN, LAT_MAX, INTERVAL)
-    SPACE_IDXS_DIM = len(LAT_LIST) * len(LON_LIST)
-    LAT_DIM = len(LAT_LIST)
-    LON_DIM = len(LON_LIST)
+    #LON_LIST = np.arange(LON_MIN, LON_MAX, INTERVAL)
+    #LAT_LIST = np.arange(LAT_MIN, LAT_MAX, INTERVAL)
+    #SPACE_IDXS_DIM = len(LAT_LIST) * len(LON_LIST)
+    #LAT_DIM = len(LAT_LIST)
+    #LON_DIM = len(LON_LIST)
 
     with xr.open_dataset(f"{input_path}/q_sliced.nc") as f:
         lat_dim_era5 = len(f.latitude)
