@@ -242,8 +242,8 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
                 if performance is None:
-                    f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}."+
-                            f"\nValidation loss, avg = {val_loss_avg}")
+                    f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}. "+
+                            f"Validation loss avg = {val_loss_avg}")
                 else:
                     f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}; "+
                             f"Performance: {performance_meter.avg:.10f}")
