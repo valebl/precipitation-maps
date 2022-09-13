@@ -131,6 +131,8 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerato
 
 def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler):
 
+    model.train()
+
     #lr_list = []
     i = 0
     for X, y in dataloader:
