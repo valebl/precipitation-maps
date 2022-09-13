@@ -11,12 +11,10 @@ class Clima_dataset(Dataset):
 
     def _load_data_into_memory(self, path, input_file, target_file, data_file, idx_file, net_type):
         with open(path + input_file, 'rb') as f:
-            input = pickle.load(f) # features*levels, time, lat, lon
-            if self.net_type == "gru":
+            input = pickle.load(f) # time, features, levels,lat, lon
+            if self.net_type == "cnn":
                 s = input.shape
-                input = input.reshape(5, 5, s[1], s[2], s[3]) # features, levels, time, lat, lon
-                input = input.swapaxes(1,2) # features, time, levels, lat, lon
-                input = input.swapaxes(0,1) # time, features, levels, lat, lon
+                input = input.reshape(s[0], s[1]*s[2], s[3], s[4]) # time, features*levels, lat, lon
         with open(path + idx_file,'rb') as f:
             idx_to_key = pickle.load(f)
         if net_type == "cnn" or net_type == "gnn" or net_type == "gru":
@@ -61,7 +59,7 @@ class Clima_dataset(Dataset):
         if self.net_type == "gru":
             input = self.input[time_idx - 24 : time_idx+1, :, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         else:
-            input = self.input[:, time_idx - 24 : time_idx+1, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
+            input = self.input[time_idx - 24 : time_idx+1, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         #-- derive gnn data
         if self.net_type == "cnn" or self.net_type == "gnn" or self.net_type == "gru":
             y = torch.tensor(self.target[k])
