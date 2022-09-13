@@ -104,19 +104,24 @@ if __name__ == '__main__':
         target_file=args.target_file, idx_file=args.idx_file, net_type=args.net_type)
 
     #-- split into trainset and testset
+    generator=torch.Generator().manual_seed(42)
     len_trainset = int(len(dataset) * args.pct_trainset)
     len_testset = len(dataset) - len_trainset
+    trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset), generator=generator)
     
+    # split trainset into trainset and validationset
+    len_trainset = int(len(trainset) * 0.8)
+    len_validationset = len(trainset) - len_trainset
+    trainset, validationset = torch.utils.data.random_split(trainset, lengths=(len_trainset, len_validationset), generator=generator)
+
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
-            f.write(f'\nTrainset size = {len_trainset}, testset size = {len_testset}.')
-
-    generator=torch.Generator().manual_seed(42)
-    trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset), generator=generator)
+            f.write(f'\nTrainset size = {len_trainset}, testset size = {len_testset}, validationset size = {len_validationset}.')
 
     #-- construct the dataloaders
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0, collate_fn=custom_collate_fn)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=0, collate_fn=custom_collate_fn)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=2, collate_fn=custom_collate_fn)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=2, collate_fn=custom_collate_fn)
+    validationloader = torch.utils.data.DataLoader(validationset, batch_size=args.batch_size, shuffle=False, num_workers=2, collate_fn=custom_collate_fn)
 
     if accelerator is None or accelerator.is_main_process:
         total_memory, used_memory, free_memory = map(int, os.popen('free -t -m').readlines()[-1].split()[1:])
@@ -158,7 +163,7 @@ if __name__ == '__main__':
     total_loss, loss_list = train_model(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
         num_epochs=args.epochs, accelerator=accelerator, log_path=args.output_path, log_file=args.out_log_file, lr_scheduler=scheduler,
         checkpoint_name=args.output_path+args.out_checkpoint_file, loss_name=args.output_path+args.out_loss_file, train_epoch=train_epoch,
-        ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd, performance=args.performance)
+        ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd, performance=args.performance, validationloader=validationloader)
 
     end = time.time()
 
@@ -168,7 +173,7 @@ if __name__ == '__main__':
 
     #-- test the model
     if args.test_model:
-        test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator, loss_fn=nn.functional.mse_loss)  #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        test_loss_total, test_loss_avg = test_model(model, trainloader, args.output_path, args.out_log_file, accelerator, loss_fn=nn.functional.mse_loss)  #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
