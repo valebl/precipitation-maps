@@ -47,6 +47,8 @@ if __name__ == '__main__':
         input_ds[v_idx,:,:,:,:] = data
         v_idx += 1
 
+    input_ds = np.flip(input_ds, 3) # the origin in the input files is in the top left corner, while we use the bottom left corner
+
     with open(log_file, 'a') as f:
         f.write(f'\nNormalising the dataset.')
 
