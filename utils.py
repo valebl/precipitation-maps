@@ -129,10 +129,10 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerato
         loss_meter.add_iter_loss()
         
 
-def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance):
+def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler):
 
     #lr_list = []
-
+    i = 0
     for X, y in dataloader:
         if accelerator is None:
             X = X.cuda()
@@ -148,20 +148,27 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
         loss_meter.add_iter_loss()
+        if i % 5000 == 0:
+            np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
         if performance is not None:
             perf = performance(y_pred, y)
             performance_meter.update(val=perf, n=X.shape[0])
         
         #lr_list.append(lr_scheduler.get_last_lr()[0])
         #lr_state_dict = lr_scheduler.state_dict()
-        #lr_state_dict["base_lrs"][0] = lr_state_dict["base_lrs"][0] * 1.00105
-        #lr_state_dict["_last_lr"][0] =lr_state_dict["_last_lr"][0] * 1.00105
-        #lr_scheduler.load_state_dict(lr_state_dict)
+        #if i % 15000 == 0 and i != 0:
+        #    lr_state_dict["base_lrs"][0] = lr_state_dict["base_lrs"][0] * 0.1
+        #    lr_state_dict["_last_lr"][0] =lr_state_dict["_last_lr"][0] * 0.1
+        #    lr_scheduler.load_state_dict(lr_state_dict)
 
-    #np.savetxt("/work_dir/220911/gru-sum-fvg-0.8-adam-test-lr/lr.csv", lr_list)
+        i += 1
+
+    #np.savetxt("/work_dir/220913/mean/lr.csv", lr_list)
 
 
-def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance):
+def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler):
+
+    model.train()
 
     for X, data in dataloader:
         device = 'cuda' if accelerator is None else accelerator.device
@@ -181,8 +188,8 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
             performance_meter.update(val=perf, n=X.shape[0])
 
 
-def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance):
-    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance)
+def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler):
+    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler)
 
 
 #------ TRAIN ------  
@@ -191,7 +198,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         log_path, log_file, train_epoch, accelerator, lr_scheduler=None, 
         checkpoint_name="checkpoint.pth", loss_name="loss.csv",
         ctd_training=False, checkpoint_ctd="../checkpoint.pth",
-        save_interval=10, performance=None):
+        save_interval=1, performance=None, validationloader=None):
     
     epoch_start = 0
 
@@ -202,7 +209,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         checkpoint = torch.load(checkpoint_ctd)
         model.load_state_dict(checkpoint["parameters"])
         #optimizer.load_state_dict(checkpoint["optimizer"])
-        #epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         #loss = checkpoint["loss"]
     
     model.train()
@@ -220,15 +227,23 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             with open(log_path+log_file, 'a') as f:
                 f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.8f}")
         start_time = time.time()
-        train_epoch(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance)
+        train_epoch(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
+                performance, loss_name, lr_scheduler)
         end_time = time.time()
         loss_meter.add_loss()
+
+        if validationloader is not None:
+            val_loss_tot, val_loss_avg = validate_gru(model, validationloader, accelerator, loss_fn)
+        else:
+            val_loss_tot, val_loass_avg = None, None
+
         if lr_scheduler is not None and lr_scheduler.get_last_lr()[0] > 0.000001:
             lr_scheduler.step()
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
                 if performance is None:
-                    f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}.")
+                    f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}."+
+                            f"\nValidation loss, avg = {val_loss_avg}")
                 else:
                     f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}; "+
                             f"Performance: {performance_meter.avg:.10f}")
@@ -256,6 +271,22 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
     
         return loss_meter.sum, loss_meter.avg_list
 
+
+#----- VALIDATION ------
+
+def validate_gru(model, dataloader, accelerator, loss_fn):
+
+    loss_meter = AverageMeter()
+    model.eval()
+    with torch.no_grad():
+        for X, y in dataloader:
+            if accelerator is None:    
+                X = X.cuda()
+                y = y.cuda()
+            y_pred = model(X).squeeze()
+            loss = loss_fn(y_pred, y)
+            loss_meter.update(loss.item(), X.shape[0])
+    return loss_meter.sum, loss_meter.avg
 
 #------ TEST ------  
 
