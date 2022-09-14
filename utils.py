@@ -4,6 +4,8 @@ import sys
 
 import torch
 from torch_geometric.data import Batch
+from torch.optim.lr_scheduler import _LRScheduler, OneCycleLR
+
 
 #------Some useful utilities------
 
@@ -43,7 +45,7 @@ def accuracy(prediction, target):
     #prediction_class = torch.sigmoid(prediction)
     prediction_class = torch.where(prediction > 0.5, 1.0, 0.0) 
     correct_items = (prediction_class == target)
-    acc = correct_items.sum().item() / prediction.shape[0]
+    acc = correct_items.sum().item() / prediction.shape[0]    
     return acc
 
 
@@ -129,7 +131,8 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerato
         loss_meter.add_iter_loss()
         
 
-def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler):
+def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
+        performance, loss_name, lr_scheduler, log_path, log_file, validationloader):
 
     model.train()
 
@@ -150,12 +153,24 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
         loss_meter.add_iter_loss()
-        if i % 5000 == 0:
-            np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
+
         if performance is not None:
             perf = performance(y_pred, y)
             performance_meter.update(val=perf, n=X.shape[0])
+
+        #if i % 5000 == 0:
+        #    np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
+        #    if validationloader is not None:
+        #        val_loss_tot, val_loss_avg, val_perf = validate_gru(model, validationloader, accelerator, loss_fn, performance)
+        #        with open(log_path+log_file, 'a') as f:
+        #            f.write(f"\nValidation loss at iteration {i}, tot = {val_loss_tot}, avg = {val_loss_avg}, val perf avg = {val_perf}.")
+        #    if performance is not None:
+        #        np.savetxt(log_path+"accuracy.csv", performance_meter.avg_iter_list)
         
+        if isinstance(lr_scheduler, (_LRScheduler, OneCycleLR)):
+            lr_scheduler.step()
+
+
         #lr_list.append(lr_scheduler.get_last_lr()[0])
         #lr_state_dict = lr_scheduler.state_dict()
         #if i % 15000 == 0 and i != 0:
@@ -168,10 +183,11 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
     #np.savetxt("/work_dir/220913/mean/lr.csv", lr_list)
 
 
-def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler):
+def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
+                performance, loss_name, lr_scheduler, log_path, log_file, validationloader):
 
     model.train()
-
+    #i = 0
     for X, data in dataloader:
         device = 'cuda' if accelerator is None else accelerator.device
         optimizer.zero_grad()
@@ -181,17 +197,32 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
             loss.backward()
         else:
             accelerator.backward(loss)
-        #torch.nn.utils.clip_grad_norm_(model.parameters(),5)
+        torch.nn.utils.clip_grad_norm_(model.parameters(),5)
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])    
         loss_meter.add_iter_loss()    
+
         if performance is not None:
-            perf = performance(y_hat, y)
+            perf = performance(y_pred, y)
             performance_meter.update(val=perf, n=X.shape[0])
 
+        if isinstance(lr_scheduler, (_LRScheduler, OneCycleLR)):
+            lr_scheduler.step()
 
-def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler):
-    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler)
+        #if i % 5000 == 0:
+        #    np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
+        #    if validationloader is not None:
+        #        val_loss_tot, val_loss_avg = validate_gnn(model, validationloader, accelerator, loss_fn, performance)
+        #        with open(log_path+log_file, 'a') as f:
+        #            f.write(f"\nValidation loss at iteration {i}, tot = {val_loss_tot}, avg = {val_loss_avg}.") #, val perf avg = {val_perf}.")
+        #    if performance is not None:
+        #        np.savetxt(log_path+"accuracy.csv", performance_meter.avg_iter_list)
+
+        #i += 1
+
+
+def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler, log_path, log_file, validationloader):
+    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler, log_path, log_file, validationloader)
 
 
 #------ TRAIN ------  
@@ -230,17 +261,19 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
                 f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.8f}")
         start_time = time.time()
         train_epoch(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
-                performance, loss_name, lr_scheduler)
+                performance, loss_name, lr_scheduler, log_path, log_file, validationloader)
         end_time = time.time()
         loss_meter.add_loss()
 
         if validationloader is not None:
-            val_loss_tot, val_loss_avg = validate_gru(model, validationloader, accelerator, loss_fn)
+            val_loss_tot, val_loss_avg, perf_avg = validate_gnn(model, validationloader, accelerator, loss_fn, performance)
         else:
-            val_loss_tot, val_loass_avg = None, None
+            val_loss_tot, val_loass_avg, perf_avg = None, None, None
 
         if lr_scheduler is not None and lr_scheduler.get_last_lr()[0] > 0.000001:
-            lr_scheduler.step()
+            if not isinstance(lr_scheduler, (_LRScheduler, OneCycleLR)):
+                lr_scheduler.step()
+
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
                 if performance is None:
@@ -248,7 +281,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
                             f"Validation loss avg = {val_loss_avg}")
                 else:
                     f.write(f"\nEpoch {epoch+1} completed in {end_time - start_time:.4f} seconds. Loss - total: {loss_meter.sum:.4f} - average: {loss_meter.avg:.10f}; "+
-                            f"Performance: {performance_meter.avg:.10f}")
+                            f"Validation loss avg = {val_loss_avg}. Performance: {performance_meter.avg:.10f}")
 
             np.savetxt(loss_name, loss_meter.avg_list)
             np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
@@ -276,7 +309,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
 
 #----- VALIDATION ------
 
-def validate_gru(model, dataloader, accelerator, loss_fn):
+def validate_gru(model, dataloader, accelerator, loss_fn, performance):
 
     loss_meter = AverageMeter()
     model.eval()
@@ -288,7 +321,22 @@ def validate_gru(model, dataloader, accelerator, loss_fn):
             y_pred = model(X).squeeze()
             loss = loss_fn(y_pred, y)
             loss_meter.update(loss.item(), X.shape[0])
-    return loss_meter.sum, loss_meter.avg
+    model.train()
+    return loss_meter.sum, loss_meter.avg, None
+
+def validate_gnn(model, dataloader, accelerator, loss_fn, performance):
+
+    loss_meter = AverageMeter()
+    model.eval()
+    with torch.no_grad():
+        for X, data in dataloader:
+            device = 'cuda' if accelerator is None else accelerator.device
+            y_pred, y = model(X, data, device)
+            loss = loss_fn(y_pred, y)
+            loss_meter.update(loss.item(), X.shape[0])
+    model.train()
+    return loss_meter.sum, loss_meter.avg, None
+
 
 #------ TEST ------  
 
@@ -344,10 +392,13 @@ def test_model_cnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
     return fin_loss_total, fin_loss_avg
 
 
-def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=None):
+def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=None, performance=None):
     if loss_fn is not None:
         loss_meter = AverageMeter()
+    if performance is not None:
+        perf_meter = AverageMeter()
 
+    i = 0
     model.eval()
     with torch.no_grad():
         for X, data in dataloader:
@@ -356,13 +407,32 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
             loss = loss_fn(y_pred, y) if loss_fn is not None else None
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])
-    
+            if performance is not None:
+                perf = accuracy(y_pred, y)
+                perf_meter.update(perf, X.shape[0])
+            if i == 0:
+                y_pred = y_pred.detach().cpu().numpy()
+                y = y.detach().cpu().numpy()
+                if performance is not None:
+                    y_pred = np.where(y_pred > 0.5, 1, 0)
+                    y_pred, y = y_pred.astype(int), y.astype(int)
+                    equal = np.where(y_pred == y)
+                    different = np.where(y_pred != y)
+                with open(log_path+log_file, 'a') as f:
+                    f.write(f"\n\n\n{list(zip(y[equal], y_pred[equal]))}")
+                    f.write(f"\n\n\n{list(zip(y[different], y_pred[different]))}")
+            i += 1
+
     fin_loss_total = loss_meter.sum if loss_fn is not None else None
     fin_loss_avg = loss_meter.avg if loss_fn is not None else None
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
-            f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
-                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}") 
+            if performance is not None:
+                f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
+                        +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}. Accuracy {perf_meter.avg}.")
+            else:
+                f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
+                        +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}") 
     return fin_loss_total, fin_loss_avg 
 
 def test_model_gru(model, dataloader, log_path, log_file, accelerator, loss_fn=None):
