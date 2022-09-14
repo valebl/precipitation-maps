@@ -113,8 +113,10 @@ def check_freezed_layers(model, log_path, log_file, accelerator):
 
 #------EPOCH LOOPS------  
 
-def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance):
-    
+def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance,
+        loss_name, lr_scheduler, log_path, log_file, validationloader, validate_model):
+
+    i = 0
     for X in dataloader:
         if accelerator is None:
             X = X.cuda()
@@ -129,12 +131,22 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, loss_meter, accelerato
         optimizer.step()
         loss_meter.update(val=loss.item(), n=X.shape[0])
         loss_meter.add_iter_loss()
-        
+ 
+        #if i % 5000 == 0:
+        #    np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
+        #    if validationloader is not None:
+        #        val_loss_tot, val_loss_avg, val_perf = validate_model(model, validationloader, accelerator, loss_fn, performance)
+        #        with open(log_path+log_file, 'a') as f:
+        #            f.write(f"\nValidation loss at iteration {i}, tot = {val_loss_tot}, avg = {val_loss_avg}.")
+
+        if isinstance(lr_scheduler, (_LRScheduler, OneCycleLR)):
+            lr_scheduler.step()
+
+        i += 1
+
 
 def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
-        performance, loss_name, lr_scheduler, log_path, log_file, validationloader):
-
-    model.train()
+        performance, loss_name, lr_scheduler, log_path, log_file, validationloader, validate_model):
 
     #lr_list = []
     i = 0
@@ -161,7 +173,7 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         #if i % 5000 == 0:
         #    np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
         #    if validationloader is not None:
-        #        val_loss_tot, val_loss_avg, val_perf = validate_gru(model, validationloader, accelerator, loss_fn, performance)
+        #        val_loss_tot, val_loss_avg, val_perf = validate_model(model, validationloader, accelerator, loss_fn, performance)
         #        with open(log_path+log_file, 'a') as f:
         #            f.write(f"\nValidation loss at iteration {i}, tot = {val_loss_tot}, avg = {val_loss_avg}, val perf avg = {val_perf}.")
         #    if performance is not None:
@@ -184,7 +196,7 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
 
 
 def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
-                performance, loss_name, lr_scheduler, log_path, log_file, validationloader):
+                performance, loss_name, lr_scheduler, log_path, log_file, validationloader, validate_model):
 
     model.train()
     #i = 0
@@ -212,7 +224,7 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         #if i % 5000 == 0:
         #    np.savetxt(loss_name+".iter", loss_meter.avg_iter_list)
         #    if validationloader is not None:
-        #        val_loss_tot, val_loss_avg = validate_gnn(model, validationloader, accelerator, loss_fn, performance)
+        #        val_loss_tot, val_loss_avg = validate_model(model, validationloader, accelerator, loss_fn, performance)
         #        with open(log_path+log_file, 'a') as f:
         #            f.write(f"\nValidation loss at iteration {i}, tot = {val_loss_tot}, avg = {val_loss_avg}.") #, val perf avg = {val_perf}.")
         #    if performance is not None:
@@ -221,15 +233,17 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerat
         #i += 1
 
 
-def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler, log_path, log_file, validationloader):
-    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter, performance, loss_name, lr_scheduler, log_path, log_file, validationloader)
+def train_epoch_gru(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
+        performance, loss_name, lr_scheduler, log_path, log_file, validationloader, validate_model):
+    return train_epoch_cnn(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
+            performance, loss_name, lr_scheduler, log_path, log_file, validationloader, validate_model)
 
 
 #------ TRAIN ------  
 
 def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
-        log_path, log_file, train_epoch, accelerator, lr_scheduler=None, 
-        checkpoint_name="checkpoint.pth", loss_name="loss.csv",
+        log_path, log_file, train_epoch, accelerator, validate_model, 
+        lr_scheduler=None, checkpoint_name="checkpoint.pth", loss_name="loss.csv",
         ctd_training=False, checkpoint_ctd="../checkpoint.pth",
         save_interval=1, performance=None, validationloader=None):
     
@@ -261,12 +275,13 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
                 f.write(f"\nEpoch {epoch+1} --- learning rate {optimizer.param_groups[0]['lr']:.8f}")
         start_time = time.time()
         train_epoch(model, dataloader, loss_fn, optimizer, loss_meter, accelerator, performance_meter,
-                performance, loss_name, lr_scheduler, log_path, log_file, validationloader)
+                performance, loss_name, lr_scheduler, log_path, log_file, validationloader,
+                validate_model)
         end_time = time.time()
         loss_meter.add_loss()
 
         if validationloader is not None:
-            val_loss_tot, val_loss_avg, perf_avg = validate_gnn(model, validationloader, accelerator, loss_fn, performance)
+            val_loss_tot, val_loss_avg, perf_avg = validate_model(model, validationloader, accelerator, loss_fn, performance)
         else:
             val_loss_tot, val_loass_avg, perf_avg = None, None, None
 
@@ -309,6 +324,20 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
 
 #----- VALIDATION ------
 
+def validate_ae(model, dataloader, accelerator, loss_fn, performance):
+
+    loss_meter = AverageMeter()
+    model.eval()
+    with torch.no_grad():
+        for X in dataloader:
+            if accelerator is None:
+                X = X.cuda()
+            X_pred = model(X)
+            loss = loss_fn(X_pred, X)
+            loss_meter.update(loss.item(), X.shape[0])
+    model.train()
+    return loss_meter.sum, loss_meter.avg, None
+
 def validate_gru(model, dataloader, accelerator, loss_fn, performance):
 
     loss_meter = AverageMeter()
@@ -340,7 +369,7 @@ def validate_gnn(model, dataloader, accelerator, loss_fn, performance):
 
 #------ TEST ------  
 
-def test_model_ae(model, dataloader, log_path, log_file, accelerator, loss_fn=None):
+def test_model_ae(model, dataloader, log_path, log_file, accelerator, loss_fn=None, performance=None):
     
     if loss_fn is not None:
         loss_meter = AverageMeter()

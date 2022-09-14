@@ -82,6 +82,7 @@ if __name__ == '__main__':
     train_epoch = getattr(utils, "train_epoch_"+args.net_type)
     test_model = getattr(utils, "test_model_"+args.net_type)
     custom_collate_fn = getattr(dataset, "custom_collate_fn_"+args.net_type)
+    validate_model = getattr(utils, "validate_"+args.net_type)
 
     if args.loss_fn == 'weighted_mse_loss' or args.loss_fn == 'mse_loss_mod':
         loss_fn = getattr(utils, args.loss_fn)
@@ -166,7 +167,8 @@ if __name__ == '__main__':
     total_loss, loss_list = train_model(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
         num_epochs=args.epochs, accelerator=accelerator, log_path=args.output_path, log_file=args.out_log_file, lr_scheduler=scheduler,
         checkpoint_name=args.output_path+args.out_checkpoint_file, loss_name=args.output_path+args.out_loss_file, train_epoch=train_epoch,
-        ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd, performance=args.performance, validationloader=validationloader)
+        ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd, performance=args.performance, validationloader=validationloader,
+        validate_model=validate_model)
 
     end = time.time()
 
@@ -176,7 +178,8 @@ if __name__ == '__main__':
 
     #-- test the model
     if args.test_model:
-        test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator, loss_fn=nn.functional.mse_loss, performance=performance)  #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        test_loss_total, test_loss_avg = test_model(model, validationloader, args.output_path, args.out_log_file, accelerator,
+                loss_fn=nn.functional.mse_loss, performance=args.performance)  #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
