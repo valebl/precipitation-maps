@@ -56,7 +56,7 @@ class Clima_dataset(Dataset):
         lat_idx = space_idx // self.LON_DIM
         lon_idx = space_idx % self.LON_DIM
         #-- derive input
-        if self.net_type == "gru":
+        if self.net_type == "gru" or "gnn":
             input = self.input[time_idx - 24 : time_idx+1, :, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         else:
             input = self.input[time_idx - 24 : time_idx+1, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
@@ -100,7 +100,7 @@ def custom_collate_fn_gru(batch):
     y = np.array([item[1] for item in batch])
     input = default_convert(input)
     y = default_convert(y)
-    y = y.to(torch.float32)
+    #y = y.to(torch.float32)
     #input.requires_grad = True
     #y.requires_grad = True
     return input, y
