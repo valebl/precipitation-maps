@@ -43,6 +43,65 @@ class Conv_Regressor(nn.Module):
         return self.regressor(self.encoder(X))
 
 
+class CNN_GRU_ae(nn.Module):
+    def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2):
+        super().__init__() 
+        self.output_dim = output_dim
+        self.encoder = nn.Sequential(
+            nn.Conv3d(input_size, 64, kernel_size=3, padding=(1,1,1), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
+            nn.BatchNorm3d(64),
+            nn.ReLU(),
+            nn.Conv3d(64, 64, kernel_size=3, padding=(1,1,1), stride=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=2, padding=(1,1,1), stride=2),   
+            nn.Conv3d(64, 256, kernel_size=3, padding=(1,1,1), stride=1),
+            nn.BatchNorm3d(256),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=2, padding=(1,0,0), stride=2),   
+            nn.Flatten(),
+            nn.Linear(2048, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Linear(512, output_dim),
+            nn.BatchNorm1d(output_dim),
+            nn.ReLU()            
+            )   
+
+        # define the decoder modules
+        self.gru = nn.Sequential(
+            nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True),        
+            )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(output_dim, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Linear(512, 2048),
+            nn.Unflatten(-1,(256, 2, 2, 2)),
+            nn.Upsample(size=(3,4,4)),
+            nn.ReLU(),
+            nn.ConvTranspose3d(256, 64, kernel_size=3, padding=(1,1,1), stride=1),
+            nn.ReLU(),
+            nn.Upsample(size=(5,6,6)),
+            nn.ReLU(),
+            nn.ConvTranspose3d(64, 64, kernel_size=3, padding=(1,1,1), stride=1),
+            nn.ReLU(),
+            nn.ConvTranspose3d(64, 5, kernel_size=3, padding=(1,1,1), stride=1),
+            )
+
+    def forward(self, X): # X.shape = (batch_size, time, features, levels, lat, lon)
+        # X.shape = (batch_size*time, features, levels, lat, lon)
+        s = X.shape
+        X = X.reshape(s[0]*s[1], s[2], s[3], s[4], s[5])
+        X = self.encoder(X)
+        X = X.reshape(s[0], s[1], self.output_dim)
+        out, h = self.gru(X)
+        out = out.reshape(s[0]*s[1], self.output_dim) # (batch_size*25, 128)
+        out = self.decoder(out)
+        out = out.reshape(s[0], s[1], s[2], s[3], s[4], s[5])
+        return out
+
 
 class CNN_GRU(nn.Module):
     def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2):
@@ -921,10 +980,10 @@ class Unet_GNN(nn.Module):
 
 if __name__ == "__main__":
 
-    model = CNN_GRU()
+    model = CNN_GRU_ae()
     model = model.cuda()
 
-    X = torch.ones((64,5,5,25,6,6)).cuda()
+    X = torch.ones((64,25,5,5,6,6)).cuda()
 
     y = model(X)
 
