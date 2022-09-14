@@ -64,7 +64,7 @@ if __name__ == '__main__':
             target_mean_nz[k] = vals_mean
             target_mean_nz_log[k] = np.log(vals_mean)
         # classes
-        vals_classes = np.where(vals.reshape(vals.shape[0]) > 0)
+        vals_classes = np.where(vals > 0, 1, 0)
         target_classes[k] = vals_classes
 
 
