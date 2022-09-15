@@ -88,6 +88,8 @@ if __name__ == '__main__':
         loss_fn = getattr(utils, args.loss_fn)
     else:
         loss_fn = getattr(nn.functional, args.loss_fn)
+    
+    #loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.25,1]).cuda())  #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     if args.use_accelerate is True:
         accelerator = Accelerator()
@@ -144,8 +146,8 @@ if __name__ == '__main__':
         #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=.9)
     else:
         optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001, total_steps=int(args.epochs*len(trainset)/args.batch_size))
-    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=0.5)
+    #scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001, total_steps=int(args.epochs*len(trainset)/args.batch_size)+2)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=0.5)
     #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1, cycle_momentum=False)
     #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5, 
     #        threshold_mode='rel',threshold=0.0001, min_lr=0.0000001)
@@ -178,7 +180,7 @@ if __name__ == '__main__':
 
     #-- test the model
     if args.test_model:
-        test_loss_total, test_loss_avg = test_model(model, validationloader, args.output_path, args.out_log_file, accelerator,
+        test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator,
                 loss_fn=nn.functional.mse_loss, performance=args.performance)  #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     if accelerator is None or accelerator.is_main_process:
