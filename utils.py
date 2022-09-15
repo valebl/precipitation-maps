@@ -175,7 +175,7 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
             val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, intermediate=False):
 
     loss_meter.reset()
-    performance_meter.reset()
+    val_loss_meter.reset()
     if performance_meter is not None:
         performance_meter.reset()
         val_performance_meter.reset()
@@ -238,7 +238,7 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
             val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, intermediate=False):
 
     loss_meter.reset()
-    performance_meter.reset()
+    val_loss_meter.reset()
     if performance_meter is not None:
         performance_meter.reset()
         val_performance_meter.reset()
