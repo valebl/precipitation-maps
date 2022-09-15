@@ -59,7 +59,7 @@ class Clima_dataset(Dataset):
         if self.net_type == "gru" or "gnn":
             input = self.input[time_idx - 24 : time_idx+1, :, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         else:
-            input = self.input[time_idx - 24 : time_idx+1, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
+            input = self.input[time_idx - 24 : time_idx+1, :, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         #-- derive gnn data
         if self.net_type == "cnn" or self.net_type == "gnn" or self.net_type == "gru":
             y = torch.tensor(self.target[k])
