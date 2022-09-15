@@ -176,8 +176,9 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
 
     loss_meter.reset()
     performance_meter.reset()
-    val_loss_meter.reset()
-    val_performance_meter.reset()
+    if performance_meter is not None:
+        performance_meter.reset()
+        val_performance_meter.reset()
 
     #lr_list = []
     i = 0
@@ -238,8 +239,9 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
 
     loss_meter.reset()
     performance_meter.reset()
-    val_loss_meter.reset()
-    val_performance_meter.reset()
+    if performance_meter is not None:
+        performance_meter.reset()
+        val_performance_meter.reset()
 
     model.train()
     i = 0
