@@ -138,9 +138,11 @@ class CNN_GRU(nn.Module):
             nn.Linear(output_dim*25, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
+            nn.Dropout(p=0.5),
             nn.Linear(512, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
+            nn.Dropout(p=0.5),
             nn.Linear(128, 1),
             #nn.Sigmoid()
             )
@@ -190,11 +192,13 @@ class CNN_GRU_classifier(nn.Module):
             nn.Linear(output_dim*25, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
+            nn.Dropout(p=0.5),
             nn.Linear(512, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(128, 1),
-            nn.Sigmoid()
+            nn.Dropout(p=0.5),
+            nn.Linear(128, 2),
+            nn.Softmax(dim=-1)
             )
 
     def forward(self, X): # X.shape = (batch_size, time, features, levels, lat, lon)
