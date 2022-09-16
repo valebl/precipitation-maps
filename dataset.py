@@ -30,8 +30,9 @@ class Clima_dataset(Dataset):
 
         return input, target, data, idx_to_key
 
-    def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, **kwargs):
+    def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, get_key=False, **kwargs):
         super().__init__()
+        self.get_key = get_key
         self.PAD = 2
         self.LAT_DIM = 43 # number of points in the GRIPHO rectangle (0.25 grid)
         self.LON_DIM = 49
@@ -56,6 +57,8 @@ class Clima_dataset(Dataset):
         lat_idx = space_idx // self.LON_DIM
         lon_idx = space_idx % self.LON_DIM
         #-- derive input
+        if self.get_key:
+            return k
         if self.net_type == "gru" or "gnn":
             input = self.input[time_idx - 24 : time_idx+1, :, :, lat_idx - self.PAD + 2 : lat_idx + self.PAD + 4, lon_idx - self.PAD + 2 : lon_idx + self.PAD + 4]
         else:
@@ -104,3 +107,6 @@ def custom_collate_fn_gru(batch):
     #input.requires_grad = True
     #y.requires_grad = True
     return input, y
+
+def custom_collate_fn_get_key(batch):
+    return batch
