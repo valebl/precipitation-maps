@@ -72,7 +72,7 @@ def r2_score(output, target):
     return r2
 
 
-def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, fine_tuning=True, net_name='encoder'):
+def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, fine_tuning=True, net_names=['encoder', 'gru']):
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
             f.write("\nLoading encoder parameters.") 
@@ -81,15 +81,17 @@ def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, 
     for name, param in state_dict.items():
         #with open(log_path+log_file, 'a') as f:
         #   f.write(f"\n{name}, {net_name in name}")
-        if net_name in name:
-            if accelerator is None or accelerator.is_main_process:
-                with open(log_path+log_file, 'a') as f:
-                    f.write(f"\nLoading parameters '{name}'")
-            param = param.data
-            #layer = name.partition("module.")[2]
-            model.state_dict()[name].copy_(param)
+        for net_name in net_names:
+            if net_name in name:
+                if accelerator is None or accelerator.is_main_process:
+                    with open(log_path+log_file, 'a') as f:
+                        f.write(f"\nLoading parameters '{name}'")
+                param = param.data
+                #layer = name.partition("module.")[2]
+                model.state_dict()[name].copy_(param)
     if not fine_tuning:
-        [param.requires_grad_(False) for name, param in model.named_parameters() if net_name in name]
+        for net_name in net_names:
+            [param.requires_grad_(False) for name, param in model.named_parameters() if net_name in name]
     return model
 
 
@@ -489,9 +491,8 @@ def test_model_ae(model, dataloader, log_path, log_file, accelerator, loss_fn=No
                     pickle.dump(X_pred, f)
                 with open(log_path+"X.pkl", 'wb') as f:
                     pickle.dump(X, f)
-                sys.exit()
-                with open(log_path+log_file, 'a') as f:
-                    f.write(f"{list(zip(X, X_pred))}")
+                #with open(log_path+log_file, 'a') as f:
+                #    f.write(f"{list(zip(X, X_pred))}")
             i += 1
 
     fin_loss_total = loss_meter.sum if loss_fn is not None else None

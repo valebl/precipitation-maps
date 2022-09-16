@@ -136,7 +136,7 @@ if __name__ == '__main__':
     #-- either load the model checkpoint or load the parameters for the encoder
     if args.load_ae_checkpoint is True and args.ctd_training is False:
         model = load_encoder_checkpoint(model, args.checkpoint_ae_file, args.output_path, args.out_log_file, accelerator,
-                fine_tuning=args.fine_tuning, net_name="dwn_conv")
+                fine_tuning=args.fine_tuning, net_names=["encoder", "gru"])
     elif args.load_ae_checkpoint is True and args.ctd_training is True:
         raise RuntimeError("Either load the ae parameters or continue the training.")
 
