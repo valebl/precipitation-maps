@@ -134,36 +134,36 @@ class CNN_GRU(nn.Module):
             )
 
         self.decoder = nn.Sequential( # (batch_size, 25, 128)
-            nn.Conv1d(25, 24, kernel_size=3, padding=0, stride=1),
-            nn.BatchNorm1d(24),
-            nn.ReLU(),
-            nn.Dropout(p=0.2),
-            nn.Conv1d(24,16, kernel_size=3, padding=0, stride=1),
-            nn.BatchNorm1d(16),
-            nn.ReLU(),
-            nn.Dropout(p=0.2),
-            nn.MaxPool1d(kernel_size=2, padding=0, stride=2),
-            nn.Conv1d(16,8, kernel_size=3, padding=0, stride=1),
-            nn.BatchNorm1d(8),
-            nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(480, 128),
-            nn.BatchNorm1d(128),
+            nn.Linear(output_dim*25, 512),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Linear(128, 1)
-            )
-
-            #nn.Flatten(),
-            #nn.Linear(output_dim*25, 1024),
-            #nn.BatchNorm1d(1024),
+            nn.Dropout(p=0.5),
+            nn.Linear(512, 1)
+            #nn.BatchNorm1d(128),
             #nn.ReLU(),
             #nn.Dropout(p=0.5),
-            #nn.Linear(1024, 256),
-            #nn.BatchNorm1d(256),
+            #nn.Linear(128, 1),
+            )
+            #nn.Conv1d(25, 24, kernel_size=3, padding=0, stride=1),
+            #nn.BatchNorm1d(24),
             #nn.ReLU(),
-            #nn.Linear(256, 1),
-            #nn.Sigmoid()
+            #nn.Dropout(p=0.2),
+            #nn.Conv1d(24,16, kernel_size=3, padding=0, stride=1),
+            #nn.BatchNorm1d(16),
+            #nn.ReLU(),
+            #nn.Dropout(p=0.2),
+            #nn.MaxPool1d(kernel_size=2, padding=0, stride=2),
+            #nn.Conv1d(16,8, kernel_size=3, padding=0, stride=1),
+            #nn.BatchNorm1d(8),
+            #nn.ReLU(),
+            #nn.Flatten(),
+            #nn.Linear(480, 128),
+            #nn.BatchNorm1d(128),
+            #nn.ReLU(),
+            #nn.Linear(128, 1)
             #)
+            #nn.Sigmoid()
 
     def forward(self, X): # X.shape = (batch_size, time, features, levels, lat, lon)
         # X.shape = (batch_size*time, features, levels, lat, lon)
