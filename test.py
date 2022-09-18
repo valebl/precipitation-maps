@@ -56,9 +56,15 @@ if __name__ == '__main__':
         os.makedirs(args.output_path)
 
     Model = getattr(models, args.model_name)
-    loss_fn = getattr(nn.functional, args.loss_fn)
     test_model = getattr(utils, "test_model_"+args.net_type)
     custom_collate_fn = getattr(dataset, "custom_collate_fn_"+args.net_type)
+
+    if args.loss_fn == 'weighted_mse_loss' or args.loss_fn == 'mse_loss_mod':
+        loss_fn = getattr(utils, args.loss_fn)
+    elif args.loss_fn == 'weighted_cross_entropy_loss':
+        loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.25,1]).cuda())
+    else:
+        loss_fn = getattr(nn.functional, args.loss_fn)
 
     if args.use_accelerate is True:
         accelerator = Accelerator()
@@ -112,7 +118,7 @@ if __name__ == '__main__':
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
-            f.write(f"Testing took {end - start}s. Total loss = {test_loss_total}, avg loss = {test_loss_avg}.")
+            f.write(f"\nTesting took {end - start}s.")
             f.write(f"\nDONE! :)")
 
     print("Done!")
