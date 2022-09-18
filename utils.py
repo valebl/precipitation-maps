@@ -189,7 +189,9 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
             X = X.cuda()
             y = y.cuda()
         optimizer.zero_grad()
-        y_pred = model(X).squeeze()
+        y_pred = model(X)
+        if performance_meter is None:
+            y_pred = y_pred.squeeze()
         loss = loss_fn(y_pred, y)
         if accelerator is None:
             loss.backward()
@@ -579,43 +581,54 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
                         +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}") 
     return fin_loss_total, fin_loss_avg 
 
-def test_model_gru(model, dataloader, log_path, log_file, accelerator, loss_fn=None):
+def test_model_gru(model, dataloader, log_path, log_file, accelerator, loss_fn=None, performance=None):
+    
     if loss_fn is not None:
         loss_meter = AverageMeter()
-    
-    #y_pred_list = []
-    #y_list = []
+    if performance is not None:
+        perf_meter = AverageMeter()
+
+    y_pred_list = []
+    y_list = []   
     model.eval()
     with torch.no_grad():
-        i = 0
         for X, y in dataloader:
-            #print(y)
-            #y_list = [y_list.append(yi) for yi in y.numpy()]
             if accelerator is None:
                 X = X.cuda()
                 y = y.cuda()
-            y_pred = model(X).squeeze()
-            #print(y_pred)
-            #y_pred_list = [y_pred_list.append(yi) for yi in y_pred.cpu().numpy()]
+            y_pred = model(X)
+            if performance is None:
+                y_pred = y_pred.squeeze()
+            # append results to list
             loss = loss_fn(y_pred, y) if loss_fn is not None else None
             if loss_fn is not None:
                 loss_meter.update(loss.item(), X.shape[0])
-            if i == 0:
-                with open(log_path+log_file, 'a') as f: 
-                    f.write(f"{list(zip(y.detach().cpu().numpy(), y_pred.detach().cpu().numpy()))}")
-            i += 1
-    
-    #print(y_list)
-    #y_list = torch.tensor(y_list)
-    #y_pred_list = torch.tensor(y_pred_list)
-    #R2 = r2_score(y_pred_list, y_list)
+            if performance is not None:
+                perf = accuracy(y_pred, y)
+                perf_meter.update(perf, X.shape[0])
+                # append results to list
+                _ = [y_pred_list.append(yi) for yi in torch.argmax(y_pred, dim=-1).detach().cpu().numpy()]
+            else:
+                _ = [y_pred_list.append(yi) for yi in y_pred.detach().cpu().numpy()]
+
+            _ = [y_list.append(yi) for yi in y.detach().cpu().numpy()]
+                       
+        y_list = np.array(y_list)
+        y_pred_list = np.array(y_pred_list)
+        with open(log_path+"y_pred.pkl", 'wb') as f:
+            pickle.dump(y_pred_list, f)
+        with open(log_path+"y.pkl", 'wb') as f:
+            pickle.dump(y_list, f)
+               
     fin_loss_total = loss_meter.sum if loss_fn is not None else None
     fin_loss_avg = loss_meter.avg if loss_fn is not None else None
+    fin_perf_avg = perf_meter.avg if performance is not None else None
+
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
             f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
-                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}")
-                    #+f" R2 = {R2}")
+                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}. Performance = {fin_perf_avg}.")
+                    
     return fin_loss_total, fin_loss_avg
 
-    #return test_model_cnn(model, dataloader, log_path, log_file, accelerator, loss_fn)
+
