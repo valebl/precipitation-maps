@@ -14,17 +14,24 @@ INTERVAL = 0.25
 lon_era5_list = np.arange(LON_MIN, LON_MAX, INTERVAL)
 lat_era5_list = np.arange(LAT_MIN, LAT_MAX, INTERVAL)
 
-lon_min_sel = 13
-lon_max_sel = 14
-lat_min_sel = 45.5
-lat_max_sel = 46.75
+### FVG
+#lon_min_sel = 13
+#lon_max_sel = 14
+#lat_min_sel = 45.5
+#lat_max_sel = 46.75
 
-i_start = int(np.where(lat_era5_list == lat_min_sel)[0]) #int((lat_min_sel - LAT_MIN) / INTERVAL)
-i_end = int(np.where(lat_era5_list == lat_max_sel)[0]) #int((lat_max_sel - LAT_MIN) / INTERVAL)
+### TRIVENETO
+lon_min_sel = 10.25
+lon_max_sel = 14
+lat_min_sel = 44.75
+lat_max_sel = 47.25
+
+i_start = int((lat_min_sel - LAT_MIN) / INTERVAL) #int(np.where(lat_era5_list == lat_min_sel)[0]) 
+i_end = int((lat_max_sel - LAT_MIN) / INTERVAL) #int(np.where(lat_era5_list == lat_max_sel)[0])
 i_list = np.arange(i_start, i_end, 1)
 
-j_start = int(np.where(lon_era5_list == lon_min_sel)[0]) #int((lon_min_sel - LON_MIN) / INTERVAL)
-j_end = int(np.where(lon_era5_list == lon_max_sel)[0]) #int((lon_max_sel - LON_MIN) / INTERVAL)
+j_start = int((lon_min_sel - LON_MIN) / INTERVAL) # int(np.where(lon_era5_list == lon_min_sel)[0]) 
+j_end = int((lon_max_sel - LON_MIN) / INTERVAL) # int(np.where(lon_era5_list == lon_max_sel)[0])
 j_list = np.arange(j_start, j_end, 1)
 
 idx_space_sel = np.array([[i * len(lon_era5_list) + j for j in j_list] for i in i_list])
@@ -39,10 +46,10 @@ idx_space_sel = np.array([[i * len(lon_era5_list) + j for j in j_list] for i in 
 with open('/data/gnn_target.pkl', 'rb') as f:
     target = pickle.load(f)
 
-with open('/data/fvg/log.txt', 'w') as f:
-    f.write(f"\nLat range = {lat_era5_list[i_start]}-{lat_era5_list[i_end]}, Lon range = {lon_era5_list[j_start]}-{lon_era5_list[j_end]}. Starting the processing.")
+with open('/data/triveneto/log.txt', 'w') as f:
+    f.write(f"\nLat range = {lat_era5_list[i_start]}-{lat_era5_list[i_end-1]+0.25}, Lon range = {lon_era5_list[j_start]}-{lon_era5_list[j_end]}. Starting the processing.")
 
-with open('/data/fvg/log.txt', 'a') as f:
+with open('/data/triveneto/log.txt', 'a') as f:
     f.write(f"\nLen of target = {len(target.keys())}")
 
 #for i in range(len(lat_era5_list)):
@@ -65,17 +72,17 @@ for i in i_list:
                 if k in target.keys():
                     target_sel[k] = target[k]
 
-    with open('/data/fvg/log.txt', 'a') as f:
+    with open('/data/triveneto/log.txt', 'a') as f:
         f.write(f"\nLatidute {lat_era5_list[i]} done.")
 
-with open('/data/fvg/log.txt', 'a') as f:
+with open('/data/triveneto/log.txt', 'a') as f:
     f.write(f"\nLen of reduced target = {len(target_sel.keys())}. Starting to write the file.")
 
-with open('/data/fvg/gnn_target_fvg.pkl', 'wb') as f:
+with open('/data/triveneto/gnn_target_tvfg.pkl', 'wb') as f:
     pickle.dump(target_sel, f)
 
 idx_to_key = np.sort(np.array(list(target_sel.keys())))
-with open('/data/fvg/idx_to_key_fvg.pkl', 'wb') as f:
+with open('/data/triveneto/idx_to_key_tvfg.pkl', 'wb') as f:
     pickle.dump(idx_to_key, f)
 
 
