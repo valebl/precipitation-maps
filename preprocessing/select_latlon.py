@@ -4,6 +4,9 @@ import pickle
 import time
 import sys
 
+input_path = "/m100_work/ICT22_ESP_0/vblasone/DATA/"
+output_path = "/m100_work/ICT22_ESP_0/vblasone/DATA/triveneto/"
+
 TIME_DIM = 140256
 LON_MIN = 6.5
 LON_MAX = 18.75
@@ -43,13 +46,13 @@ idx_space_sel = np.array([[i * len(lon_era5_list) + j for j in j_list] for i in 
 
 #sys.exit()
 
-with open('/data/gnn_target.pkl', 'rb') as f:
+with open(input_path + 'gnn_target.pkl', 'rb') as f:
     target = pickle.load(f)
 
-with open('/data/triveneto/log.txt', 'w') as f:
+with open(output_path + 'log.txt', 'w') as f:
     f.write(f"\nLat range = {lat_era5_list[i_start]}-{lat_era5_list[i_end-1]+0.25}, Lon range = {lon_era5_list[j_start]}-{lon_era5_list[j_end]}. Starting the processing.")
 
-with open('/data/triveneto/log.txt', 'a') as f:
+with open(output_path + 'log.txt', 'a') as f:
     f.write(f"\nLen of target = {len(target.keys())}")
 
 #for i in range(len(lat_era5_list)):
@@ -72,17 +75,17 @@ for i in i_list:
                 if k in target.keys():
                     target_sel[k] = target[k]
 
-    with open('/data/triveneto/log.txt', 'a') as f:
+    with open(output_path + 'log.txt', 'a') as f:
         f.write(f"\nLatidute {lat_era5_list[i]} done.")
 
-with open('/data/triveneto/log.txt', 'a') as f:
+with open(output_path + 'log.txt', 'a') as f:
     f.write(f"\nLen of reduced target = {len(target_sel.keys())}. Starting to write the file.")
 
-with open('/data/triveneto/gnn_target_tvfg.pkl', 'wb') as f:
+with open(output_path + 'gnn_target_tvfg.pkl', 'wb') as f:
     pickle.dump(target_sel, f)
 
 idx_to_key = np.sort(np.array(list(target_sel.keys())))
-with open('/data/triveneto/idx_to_key_tvfg.pkl', 'wb') as f:
+with open(output_path + 'idx_to_key_tvfg.pkl', 'wb') as f:
     pickle.dump(idx_to_key, f)
 
 
