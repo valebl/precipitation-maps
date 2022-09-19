@@ -398,7 +398,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             }
         torch.save(checkpoint_dict, checkpoint_name)
     
-        return loss_meter.sum, loss_meter.avg_list
+    return loss_meter.sum, loss_meter.avg_list
 
 
 #----- VALIDATION ------

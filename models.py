@@ -176,7 +176,7 @@ class CNN_GRU(nn.Module):
         return out
 
 class CNN_GRU_classifier(nn.Module):
-    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2):
+    def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2):
         super().__init__() 
         self.output_dim = output_dim
         self.encoder = nn.Sequential(

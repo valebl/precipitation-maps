@@ -77,6 +77,11 @@ if __name__ == '__main__':
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
+    if args.use_accelerate is True:
+        accelerator = Accelerator()
+    else:
+        accelerator = None
+
     Model = getattr(models, args.model_name)
     #loss_fn = getattr(nn.functional, args.loss_fn)
     train_epoch = getattr(utils, "train_epoch_"+args.net_type)
@@ -87,7 +92,10 @@ if __name__ == '__main__':
     if args.loss_fn == 'weighted_mse_loss' or args.loss_fn == 'mse_loss_mod':
         loss_fn = getattr(utils, args.loss_fn)
     elif args.loss_fn == 'weighted_cross_entropy_loss':
-        loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.25,1]).cuda())
+        if accelerator is None:
+            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.25,1]).cuda())
+        else:
+            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.25,1]).to(accelerator.device))
     else:
         loss_fn = getattr(nn.functional, args.loss_fn)
     
@@ -153,7 +161,7 @@ if __name__ == '__main__':
     #        threshold_mode='rel',threshold=0.0001, min_lr=0.0000001)
 
     if accelerator is not None:
-        model, optimizer, trainloader, testloader = accelerator.prepare(model, optimizer, trainloader, testloader)
+        model, optimizer, trainloader, testloader, validationloader = accelerator.prepare(model, optimizer, trainloader, testloader, validationloader)
     else:
         model = model.cuda()
 
