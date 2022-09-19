@@ -35,7 +35,7 @@ if __name__ == '__main__':
     with open(log_file, 'w') as f:
         f.write(f'\nStarting the preprocessing.')
 
-    input_ds = np.zeros((N_VARS, N_LEVELS, TIME_DIM, lat_dim_era5, lon_dim_era5), dtype=np.float32) # variables, levels, time, lat, lon
+    input_ds = np.zeros((TIME_DIM, N_VARS, N_LEVELS, lat_dim_era5, lon_dim_era5), dtype=np.float32) # variables, levels, time, lat, lon
     v_idx = 0
     for v in ['q', 't', 'u', 'v', 'z']:
         with open(log_file, 'a') as f:
@@ -43,8 +43,8 @@ if __name__ == '__main__':
         with xr.open_dataset(input_path + f'{v}_sliced.nc') as file:
             data = file[v].values
         s = data.shape # (time, levels, lat, lon)
-        data = data.reshape(s[1], s[0], s[2], s[3]) # (levels, time, lat, lon)
-        input_ds[v_idx,:,:,:,:] = data
+        #data = data.reshape(s[1], s[0], s[2], s[3]) # (levels, time, lat, lon)
+        input_ds[:,v_idx,:,:,:] = data
         v_idx += 1
 
     input_ds = np.flip(input_ds, 3) # the origin in the input files is in the top left corner, while we use the bottom left corner

@@ -93,9 +93,9 @@ if __name__ == '__main__':
         loss_fn = getattr(utils, args.loss_fn)
     elif args.loss_fn == 'weighted_cross_entropy_loss':
         if accelerator is None:
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.25,1]).cuda())
+            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.15,1]).cuda())
         else:
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.25,1]).to(accelerator.device))
+            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.15,1]).to(accelerator.device))
     else:
         loss_fn = getattr(nn.functional, args.loss_fn)
     
