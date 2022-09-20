@@ -4,14 +4,17 @@ import pickle
 import time
 import sys
 
-input_path = "/m100_work/ICT22_ESP_0/vblasone/DATA/"
-output_path = "/m100_work/ICT22_ESP_0/vblasone/DATA/triveneto/"
+#input_path = "/m100_work/ICT22_ESP_0/vblasone/DATA/"
+#output_path = "/m100_work/ICT22_ESP_0/vblasone/DATA/north/"
+
+input_path = "/data/"
+output_path = "/data/north/"
 
 TIME_DIM = 140256
 LON_MIN = 6.5
 LON_MAX = 18.75
 LAT_MIN = 36.5
-LAT_MAX =  47.25
+LAT_MAX = 47.25
 INTERVAL = 0.25
 
 lon_era5_list = np.arange(LON_MIN, LON_MAX, INTERVAL)
@@ -24,9 +27,15 @@ lat_era5_list = np.arange(LAT_MIN, LAT_MAX, INTERVAL)
 #lat_max_sel = 46.75
 
 ### TRIVENETO
-lon_min_sel = 10.25
-lon_max_sel = 14
-lat_min_sel = 44.75
+#lon_min_sel = 10.25
+#lon_max_sel = 14
+#lat_min_sel = 44.75
+#lat_max_sel = 47.25
+
+### NORTH-ITALY
+lon_min_sel = 6.5
+lon_max_sel = 14.00
+lat_min_sel = 43.75
 lat_max_sel = 47.25
 
 i_start = int((lat_min_sel - LAT_MIN) / INTERVAL) #int(np.where(lat_era5_list == lat_min_sel)[0]) 
@@ -50,7 +59,7 @@ with open(input_path + 'gnn_target.pkl', 'rb') as f:
     target = pickle.load(f)
 
 with open(output_path + 'log.txt', 'w') as f:
-    f.write(f"\nLat range = {lat_era5_list[i_start]}-{lat_era5_list[i_end-1]+0.25}, Lon range = {lon_era5_list[j_start]}-{lon_era5_list[j_end]}. Starting the processing.")
+    f.write(f"\nNumber of lon points: {len(lon_era5_list)}. Number of lat points: {len(lat_era5_list)}.\nLat range = {lat_era5_list[i_start]}-{lat_era5_list[i_end-1]+0.25}, Lon range = {lon_era5_list[j_start]}-{lon_era5_list[j_end-1]+0.25}. Starting the processing.")
 
 with open(output_path + 'log.txt', 'a') as f:
     f.write(f"\nLen of target = {len(target.keys())}")
@@ -81,11 +90,11 @@ for i in i_list:
 with open(output_path + 'log.txt', 'a') as f:
     f.write(f"\nLen of reduced target = {len(target_sel.keys())}. Starting to write the file.")
 
-with open(output_path + 'gnn_target_tvfg.pkl', 'wb') as f:
+with open(output_path + 'gnn_target_north.pkl', 'wb') as f:
     pickle.dump(target_sel, f)
 
 idx_to_key = np.sort(np.array(list(target_sel.keys())))
-with open(output_path + 'idx_to_key_tvfg.pkl', 'wb') as f:
+with open(output_path + 'idx_to_key_north.pkl', 'wb') as f:
     pickle.dump(idx_to_key, f)
 
 
