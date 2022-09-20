@@ -535,12 +535,12 @@ def test_model_cnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
 
 
 def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=None, performance=None):
+    
     if loss_fn is not None:
         loss_meter = AverageMeter()
     if performance is not None:
         perf_meter = AverageMeter()
 
-    i = 0
     model.eval()
     with torch.no_grad():
         for X, data in dataloader:
@@ -552,34 +552,30 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
             if performance is not None:
                 perf = accuracy(y_pred, y)
                 perf_meter.update(perf, X.shape[0])
-                # for cross entropy loss                        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                y_pred = torch.where(y_pred > 0.5, 1, 0)
-                y_pred = y_pred.to(torch.int64)
-                y = y.to(torch.int64)
-            if i == 0:
-                y_pred = y_pred.detach().cpu().numpy()
-                y = y.detach().cpu().numpy()
-                if performance is not None:
-                    y_pred = np.where(y_pred > 0.5, 1, 0)
-                    y_pred, y = y_pred.astype(int), y.astype(int)
-                    equal = np.where(y_pred == y)
-                    different = np.where(y_pred != y)
-                with open(log_path+log_file, 'a') as f:
-                    f.write(f"\n\n\n{list(zip(y[equal], y_pred[equal]))}")
-                    f.write(f"\n\n\n{list(zip(y[different], y_pred[different]))}")
-            i += 1
+                # append results to list
+                _ = [y_pred_list.append(yi) for yi in torch.argmax(y_pred, dim=-1).detach().cpu().numpy()]
+            else:
+                _ = [y_pred_list.append(yi) for yi in y_pred.detach().cpu().numpy()]
+            
+        _ = [y_list.append(yi) for yi in y.detach().cpu().numpy()]
+        y_list = np.array(y_list)
+        y_pred_list = np.array(y_pred_list)
+        with open(log_path+"y_pred.pkl", 'wb') as f:
+            pickle.dump(y_pred_list, f)
+        with open(log_path+"y.pkl", 'wb') as f:                  
+            pickle.dump(y_list, f)
 
     fin_loss_total = loss_meter.sum if loss_fn is not None else None
     fin_loss_avg = loss_meter.avg if loss_fn is not None else None
+    fin_perf_avg = perf_meter.avg if performance is not None else None
+
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
-            if performance is not None:
-                f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
-                        +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}. Accuracy {perf_meter.avg}.")
-            else:
-                f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
-                        +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}") 
-    return fin_loss_total, fin_loss_avg 
+            f.write(f"\nTESTING - loss total = {fin_loss_total if fin_loss_total is not None else '--'},"
+                    +f"loss avg = {fin_loss_avg if fin_loss_avg is not None else '--'}. Performance = {fin_perf_avg}.")
+
+    return fin_loss_total, fin_loss_avg
+   
 
 def test_model_gru(model, dataloader, log_path, log_file, accelerator, loss_fn=None, performance=None):
     
