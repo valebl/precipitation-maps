@@ -541,6 +541,8 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
     if performance is not None:
         perf_meter = AverageMeter()
 
+    y_pred_list = []
+    y_list = []
     model.eval()
     with torch.no_grad():
         for X, data in dataloader:
