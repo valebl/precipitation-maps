@@ -106,9 +106,10 @@ if __name__ == '__main__':
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'w') as f:
-            f.write(f'Cuda is available: {torch.cuda.is_available()}.\nStarting with pct_trainset={args.pct_trainset}, lr={args.lr} and epochs={args.epochs}.'+
-                f'\nThere are {torch.cuda.device_count()} available GPUs.'+
-                f'\nModel = {args.model_name}, batch size = {args.batch_size}')
+            f.write(f"Cuda is available: {torch.cuda.is_available()}.\nStarting with pct_trainset={args.pct_trainset}, lr={args.lr}, "+
+                f"weight decay = {args.weight_decay} and epochs={args.epochs}."+
+                f"\nThere are {torch.cuda.device_count()} available GPUs."+
+                f"\nModel = {args.model_name}, batch size = {args.batch_size}")
         
     #-- create the dataset
     dataset = Dataset(path=args.input_path, input_file=args.input_file, data_file=args.data_file,
@@ -120,10 +121,10 @@ if __name__ == '__main__':
     len_testset = len(dataset) - len_trainset
     trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset), generator=generator)
     
-    # split trainset into trainset and validationset
-    len_trainset = int(len(trainset) * 0.8)
-    len_validationset = len(trainset) - len_trainset
-    trainset, validationset = torch.utils.data.random_split(trainset, lengths=(len_trainset, len_validationset), generator=generator)
+    # split testset into validationset and testset
+    len_testset = int(len(testset) * 0.5)
+    len_validationset = len(testset) - len_testset
+    testset, validationset = torch.utils.data.random_split(testset, lengths=(len_testset, len_validationset), generator=generator)
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
