@@ -293,7 +293,7 @@ class CNN_GRU_GNN_classifier(nn.Module):
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
         #print(y_pred.shape, data_batch.y.shape)
-        return y_pred, data_batch.y.squeeze()
+        return y_pred, data_batch.y.squeeze().to(torch.long)
         #return torch.log(torch.exp(y_pred)+1), data_batch.y
 
 
