@@ -93,9 +93,9 @@ if __name__ == '__main__':
         loss_fn = getattr(utils, args.loss_fn)
     elif args.loss_fn == 'weighted_cross_entropy_loss':
         if accelerator is None:
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.15,1]).cuda())
+            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.1,1]).cuda())
         else:
-            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.15,1]).to(accelerator.device))
+            loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([0.1,1]).to(accelerator.device))
     else:
         loss_fn = getattr(nn.functional, args.loss_fn)
     
@@ -108,9 +108,12 @@ if __name__ == '__main__':
         with open(args.output_path+args.out_log_file, 'w') as f:
             f.write(f"Cuda is available: {torch.cuda.is_available()}.\nStarting with pct_trainset={args.pct_trainset}, lr={args.lr}, "+
                 f"weight decay = {args.weight_decay} and epochs={args.epochs}."+
-                f"\nThere are {torch.cuda.device_count()} available GPUs."+
-                f"\nModel = {args.model_name}, batch size = {args.batch_size}")
-        
+                f"\nThere are {torch.cuda.device_count()} available GPUs.")
+            if accelerator is None:
+                f.write(f"\nModel = {args.model_name}, batch size = {args.batch_size}")
+            else:
+                f.write(f"\nModel = {args.model_name}, batch size = {args.batch_size*torch.cuda.device_count()}")
+
     #-- create the dataset
     dataset = Dataset(path=args.input_path, input_file=args.input_file, data_file=args.data_file,
         target_file=args.target_file, idx_file=args.idx_file, net_type=args.net_type)
