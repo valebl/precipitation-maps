@@ -256,7 +256,11 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
         device = 'cuda' if accelerator is None else accelerator.device
         optimizer.zero_grad()
         y_pred, y = model(X, data, device)
-        loss = loss_fn(y_pred, y)
+        if performance_meter is not None:
+            loss = loss_fn(y_pred, y)
+        else:
+            mask = data.mask
+            loss = loss_fn(y_pred[mask], y[mask])
         if accelerator is None:
             loss.backward()
         else:
