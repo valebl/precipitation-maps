@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import sys
 
 import torch
 from torch.utils.data import Dataset
@@ -71,7 +72,10 @@ class Clima_dataset(Dataset):
             else:
                 edge_index = torch.tensor(self.data[space_idx]['edge_index'])
                 x = torch.tensor(self.data[space_idx]['x'])
-                data = Data(x=x, edge_index=edge_index, y=y, mask=torch.where(y>=0.1,1,0))
+                mask = torch.where(y==0, False, True)
+                #print(y, torch.where(y.squeeze()>=np.log(0.1),1,0))
+                #sys.exit()
+                data = Data(x=x, edge_index=edge_index, y=y, mask=mask)
                 return input, data
         else:
             return input
