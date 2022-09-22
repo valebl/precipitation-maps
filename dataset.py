@@ -71,7 +71,7 @@ class Clima_dataset(Dataset):
             else:
                 edge_index = torch.tensor(self.data[space_idx]['edge_index'])
                 x = torch.tensor(self.data[space_idx]['x'])
-                data = Data(x=x, edge_index=edge_index, y=y)
+                data = Data(x=x, edge_index=edge_index, y=y, mask=torch.where(y>=0.1,1,0))
                 return input, data
         else:
             return input
