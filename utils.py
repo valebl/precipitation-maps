@@ -87,7 +87,8 @@ def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, 
                     with open(log_path+log_file, 'a') as f:
                         f.write(f"\nLoading parameters '{name}'")
                 param = param.data
-                #layer = name.partition("module.")[2]
+                if "module" in name:
+                    name = name.partition("module.")[2]
                 model.state_dict()[name].copy_(param)
     if not fine_tuning:
         for net_name in net_names:
@@ -163,6 +164,7 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_met
 
             if performance_meter is not None:
                 np.savetxt(log_path+"train_accuracy_iter.csv", performance_meter.avg_iter_list)
+                np.savetxt(log_path+"val_accuracy_iter.csv", val_performance_meter.avg_iter_list)
 
         #if isinstance(lr_scheduler, (_LRScheduler, OneCycleLR)):
         #    lr_scheduler.step()
@@ -220,7 +222,8 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
 
             if performance_meter is not None:
                 np.savetxt(log_path+"train_accuracy_iter.csv", performance_meter.avg_iter_list)
-        
+                np.savetxt(log_path+"val_accuracy_iter.csv", val_performance_meter.avg_iter_list)
+
         #if isinstance(lr_scheduler, (_LRScheduler, OneCycleLR)):
         #    lr_scheduler.step()
 
@@ -279,11 +282,30 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
                         f.write(f"\nValidation loss at iteration {i}, tot = {val_loss_meter.sum}, avg = {val_loss_meter.avg}, val perf avg = {val_performance_meter.avg}.")
                     else:
                         f.write(f"\nValidation loss at iteration {i}, tot = {val_loss_meter.sum}, avg = {val_loss_meter.avg}")
-            np.savetxt(log_path+"val_loss_iter.csv", val_loss_meter.avg_iter_list)
-            np.savetxt(log_path+"train_loss_iter.csv", loss_meter.avg_iter_list)
+            #np.savetxt(log_path+"val_loss_iter.csv", val_loss_meter.avg_iter_list)
+            #np.savetxt(log_path+"train_loss_iter.csv", loss_meter.avg_iter_list)
 
-            if performance_meter is not None:
-                np.savetxt(log_path+"train_accuracy_iter.csv", performance_meter.avg_iter_list)
+            #if performance_meter is not None:
+            #    np.savetxt(log_path+"train_accuracy_iter.csv", performance_meter.avg_iter_list)
+            #    np.savetxt(log_path+"val_accuracy_iter.csv", val_performance_meter.avg_iter_list)
+
+        
+            if accelerator is None or accelerator.is_main_process:
+                np.savetxt(log_path+"train_loss.csv", loss_meter.avg_list)
+                np.savetxt(log_path+"val_loss.csv", val_loss_meter.avg_list)
+                np.savetxt(log_path+"train_loss_iter.csv", loss_meter.avg_iter_list)
+                np.savetxt(log_path+"val_loss_iter.csv", val_loss_meter.avg_iter_list)
+                if performance_meter is not None:
+                    np.savetxt(log_path+"train_perf.csv", performance_meter.avg_list)
+                    np.savetxt(log_path+"val_perf.csv", val_performance_meter.avg_list)
+                    np.savetxt(log_path+"train_perf_iter.csv", performance_meter.avg_iter_list)
+                    np.savetxt(log_path+"val_perf_iter.csv", val_performance_meter.avg_iter_list)
+                checkpoint_dict = {
+                    "parameters": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "loss": loss_meter.avg
+                    }
+                torch.save(checkpoint_dict, log_path+"checkpoint.pth")
 
         i += 1
 
@@ -313,7 +335,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
                 f.write("\nLoading the checkpoint to continue the training.")
         checkpoint = torch.load(checkpoint_ctd)
         model.load_state_dict(checkpoint["parameters"])
-        #optimizer.load_state_dict(checkpoint["optimizer"])
+        optimizer.load_state_dict(checkpoint["optimizer"])
         epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         #loss = checkpoint["loss"]
     
