@@ -326,7 +326,8 @@ class CNN_GRU_GNN_regressor(nn.Module):
             data.__setitem__('x', features)
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
-        return y_pred, data_batch.y.squeeze()
+        mask = data_batch.mask
+        return y_pred[mask].squeeze(), data_batch.y[mask].squeeze()
 
 
 

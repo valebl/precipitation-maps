@@ -104,7 +104,8 @@ def load_model_checkpoint(model, checkpoint, log_path, log_file, accelerator):
             f.write(f"\nLoading checkpoint")
     for name, param in state_dict.items():
         param = param.data
-        #layer = name.partition("module.")[2]
+        if "module" in name:
+            name = name.partition("module.")[2]
         model.state_dict()[name].copy(param)
     return model
 
@@ -256,11 +257,7 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
         device = 'cuda' if accelerator is None else accelerator.device
         optimizer.zero_grad()
         y_pred, y = model(X, data, device)
-        if performance_meter is not None:
-            loss = loss_fn(y_pred, y)
-        else:
-            mask = data.mask
-            loss = loss_fn(y_pred[mask], y[mask])
+        loss = loss_fn(y_pred, y)
         if accelerator is None:
             loss.backward()
         else:
@@ -338,7 +335,11 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             with open(log_path+log_file, 'a') as f:
                 f.write("\nLoading the checkpoint to continue the training.")
         checkpoint = torch.load(checkpoint_ctd)
-        model.load_state_dict(checkpoint["parameters"])
+        for name, param in checkpoint["parameters"].items():
+            param = param.data
+            if "module" in name:
+                name = name.partition("module.")[2]
+            model.state_dict()[name].copy_(param)
         optimizer.load_state_dict(checkpoint["optimizer"])
         epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         #loss = checkpoint["loss"]
