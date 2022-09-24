@@ -243,7 +243,7 @@ def train_epoch_cnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
 
 
 def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_meter, performance_meter, val_loss_meter,
-            val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, intermediate=False):
+            val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, intermediate=False, epoch=0):
 
     loss_meter.reset()
     val_loss_meter.reset()
@@ -304,7 +304,8 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
                 checkpoint_dict = {
                     "parameters": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
-                    "loss": loss_meter.avg
+                    #"loss": loss_meter.avg
+                    "epoch": epoch
                     }
                 torch.save(checkpoint_dict, log_path+"checkpoint.pth")
 
@@ -335,13 +336,16 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             with open(log_path+log_file, 'a') as f:
                 f.write("\nLoading the checkpoint to continue the training.")
         checkpoint = torch.load(checkpoint_ctd)
-        for name, param in checkpoint["parameters"].items():
-            param = param.data
-            if "module" in name:
-                name = name.partition("module.")[2]
-            model.state_dict()[name].copy_(param)
-        optimizer.load_state_dict(checkpoint["optimizer"])
-        epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        try:
+            _ = model.load_state_dict(checkpoint["parameters"])
+        except:
+            for name, param in checkpoint["parameters"].items():
+                param = param.data
+                if "module" in name:
+                    name = name.partition("module.")[2]
+                model.state_dict()[name].copy_(param)
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         #loss = checkpoint["loss"]
     
     model.train()
@@ -367,7 +371,7 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         start_time = time.time()
         
         train_epoch(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_meter, performance_meter, val_loss_meter,
-            val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator)
+            val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, epoch=epoch)
         
         end_time = time.time()
         
