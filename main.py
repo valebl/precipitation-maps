@@ -169,6 +169,25 @@ if __name__ == '__main__':
     else:
         model = model.cuda()
 
+    
+    epoch_start = 0
+
+    if args.ctd_training:
+        if accelerator is None or accelerator.is_main_process:
+            with open(args.output_path+args.out_log_file, 'a') as f:
+                f.write("\nLoading the checkpoint to continue the training.")
+        checkpoint = torch.load(args.checkpoint_ctd)
+        try:
+            model.load_state_dict(checkpoint["parameters"])
+        except:
+            for name, param in checkpoint["parameters"].items():
+                param = param.data
+                #if "module" in name:
+                name = name.partition("module.")[2]
+                model.state_dict()[name].copy_(param)
+                optimizer.load_state_dict(checkpoint["optimizer"])
+        epoch_start = checkpoint["epoch"] + 1
+
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     if accelerator is None or accelerator.is_main_process: 
         with open(args.output_path+args.out_log_file, 'a') as f:
@@ -182,7 +201,7 @@ if __name__ == '__main__':
         num_epochs=args.epochs, accelerator=accelerator, log_path=args.output_path, log_file=args.out_log_file, lr_scheduler=scheduler,
         checkpoint_name=args.output_path+args.out_checkpoint_file, loss_name=args.output_path+args.out_loss_file, train_epoch=train_epoch,
         ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd, performance=args.performance, validationloader=validationloader,
-        validate_model=validate_model)
+        validate_model=validate_model, epoch_start=epoch_start)
 
     end = time.time()
 
