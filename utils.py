@@ -327,26 +327,24 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         log_path, log_file, train_epoch, accelerator, validate_model, validationloader,
         lr_scheduler=None, checkpoint_name="checkpoint.pth", loss_name="loss.csv",
         ctd_training=False, checkpoint_ctd="../checkpoint.pth",
-        save_interval=1, performance=None):
-    
-    epoch_start = 0
+        save_interval=1, performance=None, epoch_start=0):
 
-    if ctd_training:
-        if accelerator is None or accelerator.is_main_process:
-            with open(log_path+log_file, 'a') as f:
-                f.write("\nLoading the checkpoint to continue the training.")
-        checkpoint = torch.load(checkpoint_ctd)
-        try:
-            _ = model.load_state_dict(checkpoint["parameters"])
-        except:
-            for name, param in checkpoint["parameters"].items():
-                param = param.data
-                if "module" in name:
-                    name = name.partition("module.")[2]
-                model.state_dict()[name].copy_(param)
-            optimizer.load_state_dict(checkpoint["optimizer"])
-            epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-        #loss = checkpoint["loss"]
+    #if ctd_training:
+    #    if accelerator is None or accelerator.is_main_process:
+    #        with open(log_path+log_file, 'a') as f:
+    #            f.write("\nLoading the checkpoint to continue the training.")
+    #    checkpoint = torch.load(checkpoint_ctd)
+    #    try:
+    #        _ = model.load_state_dict(checkpoint["parameters"])
+    #    except:
+    #        for name, param in checkpoint["parameters"].items():
+    #            param = param.data
+    #            if "module" in name:
+    #                name = name.partition("module.")[2]
+    #            model.state_dict()[name].copy_(param)
+    #        optimizer.load_state_dict(checkpoint["optimizer"])
+    #        epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    #    #loss = checkpoint["loss"]
     
     model.train()
     
