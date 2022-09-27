@@ -588,7 +588,7 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
             else:
                 _ = [y_pred_list.append(yi) for yi in y_pred.detach().cpu().numpy()]
             
-        _ = [y_list.append(yi) for yi in y.detach().cpu().numpy()]
+            _ = [y_list.append(yi) for yi in y.detach().cpu().numpy()]
         y_list = np.array(y_list)
         y_pred_list = np.array(y_pred_list)
         with open(log_path+"y_pred.pkl", 'wb') as f:

@@ -81,19 +81,24 @@ if __name__ == '__main__':
             target_file=args.target_file, idx_file=args.idx_file, net_type=args.net_type)
 
     #-- split into trainset and testset
+    generator=torch.Generator().manual_seed(42)
     len_trainset = int(len(dataset) * args.pct_trainset)
     len_testset = len(dataset) - len_trainset
+    trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset), generator=generator)
+
+    # split testset into validationset and testset
+    len_testset = int(len(testset) * 0.5)
+    len_validationset = len(testset) - len_testset
+    testset, validationset = torch.utils.data.random_split(testset, lengths=(len_testset, len_validationset), generator=generator)
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
-            f.write(f'\nTrainset size = {len_trainset}, testset size = {len_testset}.')
-
-    generator=torch.Generator().manual_seed(42)
-    trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset), generator=generator)
+            f.write(f'\nTrainset size = {len_trainset}, testset size = {len_testset}, validationset size = {len_validationset}.')
 
     #-- construct the dataloaders
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0, collate_fn=custom_collate_fn)
+    #trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=0, collate_fn=custom_collate_fn)
     testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=0, collate_fn=custom_collate_fn)
+    #validationloader = torch.utils.data.DataLoader(validationset, batch_size=args.batch_size, shuffle=False, num_workers=0, collate_fn=custom_collate_fn)
 
     if accelerator is None or accelerator.is_main_process:
         total_memory, used_memory, free_memory = map(int, os.popen('free -t -m').readlines()[-1].split()[1:])

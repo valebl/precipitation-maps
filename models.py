@@ -294,7 +294,7 @@ class CNN_GRU_GNN_regressor(nn.Module):
 
         #gnn
         self.gnn = geometric_nn.Sequential('x, edge_index', [
-            (GATConv(3+256*25, hidden_features, aggr='mean'),  'x, edge_index -> x'), # max, mean, add ...
+            (GATConv(3+output_dim*25, hidden_features, aggr='mean'),  'x, edge_index -> x'), # max, mean, add ...
             nn.ReLU(),
             (GATConv(hidden_features, hidden_features, aggr='mean'), 'x, edge_index -> x'),
             nn.ReLU(),
