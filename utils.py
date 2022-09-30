@@ -112,9 +112,10 @@ def load_model_checkpoint(model, checkpoint, log_path, log_file, accelerator):
 
 def check_freezed_layers(model, log_path, log_file, accelerator):
     for name, param in model.named_parameters():
+        n_param = param.numel()
         if accelerator is None or accelerator.is_main_process:
             with open(log_path+log_file, 'a') as f:
-                f.write(f"\nLayer {name} requires_grad = {param.requires_grad}")
+                f.write(f"\nLayer {name} requires_grad = {param.requires_grad} and has {n_param} parameters")
 
 
 #------Training utilities------
