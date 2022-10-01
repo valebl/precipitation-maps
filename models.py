@@ -344,7 +344,7 @@ class CNN_GRU_GNN_classifier_2(nn.Module):
 
 
 class CNN_GRU_GNN_regressor(nn.Module):
-    def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2, hidden_features=128):
+    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2, hidden_features=256):
         super().__init__()
         self.output_dim = output_dim
         self.encoder = nn.Sequential(
@@ -381,24 +381,24 @@ class CNN_GRU_GNN_regressor(nn.Module):
         #gnn
         self.gnn = geometric_nn.Sequential('x, edge_index', [
             (geometric_nn.BatchNorm(3+512), 'x -> x'),
-            (GATv2Conv(3+512, 128, heads=1, aggr='mean', dropout=0.5),  'x, edge_index -> x'), # max, mean, add ...
+            (GATv2Conv(3+512, 128, heads=2, aggr='mean', dropout=0.5),  'x, edge_index -> x'), # max, mean, add ...
+            (geometric_nn.BatchNorm(256), 'x -> x'),
+            nn.ReLU(),
+            (GATv2Conv(256, 128, heads=2, aggr='mean'), 'x, edge_index -> x'),
+            (geometric_nn.BatchNorm(256), 'x -> x'),
+            nn.ReLU(),
+            (GATv2Conv(256, 128, aggr='mean'), 'x, edge_index -> x'),
             (geometric_nn.BatchNorm(128), 'x -> x'),
             nn.ReLU(),
-            #(GATv2Conv(256, 128, heads=2, aggr='mean'), 'x, edge_index -> x'),
-            #(geometric_nn.BatchNorm(256), 'x -> x'),
-            #nn.ReLU(),
-            #(GATv2Conv(256, 128, aggr='mean'), 'x, edge_index -> x'),
-            #(geometric_nn.BatchNorm(128), 'x -> x'),
-            #nn.ReLU(),
-            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            #(geometric_nn.BatchNorm(128), 'x -> x'),
-            #nn.ReLU(),
-            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            #(geometric_nn.BatchNorm(128), 'x -> x'),
-            #nn.ReLU(),
-            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            #(geometric_nn.BatchNorm(128), 'x -> x'),
-            #nn.ReLU(),
+            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            (geometric_nn.BatchNorm(128), 'x -> x'),
+            nn.ReLU(),
+            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            (geometric_nn.BatchNorm(128), 'x -> x'),
+            nn.ReLU(),
+            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            (geometric_nn.BatchNorm(128), 'x -> x'),
+            nn.ReLU(),
             (GATv2Conv(128, 1, aggr='mean'), 'x, edge_index -> x'),
             ])
 
@@ -419,10 +419,6 @@ class CNN_GRU_GNN_regressor(nn.Module):
             data.__setitem__('x', features)
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
-        #data_batch.y_pred = y_pred
-        #data_batch = data_batch.to_data_list()
-        #mask = data_batch.mask # for results
-        #return data_batch.y_pred, data_batch.y # for results
         mask = data_batch.mask.squeeze()
         return y_pred.squeeze()[mask], data_batch.y.squeeze()[mask]
 
