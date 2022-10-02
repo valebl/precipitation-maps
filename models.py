@@ -423,6 +423,85 @@ class CNN_GRU_GNN_regressor(nn.Module):
         return y_pred.squeeze()[mask], data_batch.y.squeeze()[mask]
 
 
+class CNN_GRU_GNN_regressor_small(nn.Module):
+    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2, hidden_features=256):
+        super().__init__()
+        self.output_dim = output_dim
+        self.encoder = nn.Sequential(
+            nn.Conv3d(input_size, 64, kernel_size=3, padding=(1,1,1), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
+            nn.BatchNorm3d(64),
+            nn.ReLU(),
+            nn.Conv3d(64, 64, kernel_size=3, padding=(1,1,1), stride=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=2, padding=(1,1,1), stride=2),
+            nn.Conv3d(64, 256, kernel_size=3, padding=(1,1,1), stride=1),
+            nn.BatchNorm3d(256),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=2, padding=(1,0,0), stride=2),
+            nn.Flatten(),
+            nn.Linear(2048, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Linear(512, output_dim),
+            nn.BatchNorm1d(output_dim),
+            nn.ReLU()
+            )
+
+        # define the decoder modules
+        self.gru = nn.Sequential(
+            nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True),
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(output_dim*25, 512),
+            nn.ReLU()
+        )
+
+        #gnn
+        self.gnn = geometric_nn.Sequential('x, edge_index', [
+            (geometric_nn.BatchNorm(3+512), 'x -> x'),
+            (GATv2Conv(3+512, 128, heads=1, aggr='mean', dropout=0.5),  'x, edge_index -> x'), # max, mean, add ...
+            (geometric_nn.BatchNorm(128), 'x -> x'),
+            nn.ReLU(),
+            #(GATv2Conv(256, 128, heads=2, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(256), 'x -> x'),
+            #nn.ReLU(),
+            #(GATv2Conv(256, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
+            (GATv2Conv(128, 1, aggr='mean'), 'x, edge_index -> x'),
+            ])
+
+    def forward(self, X_batch, data_batch, device): # data_batch is a list of Data object
+        s = X_batch.shape
+        X_batch = X_batch.reshape(s[0]*s[1], s[2], s[3], s[4], s[5])
+        X_batch = self.encoder(X_batch.to(device))
+        X_batch = X_batch.reshape(s[0], s[1], self.output_dim)
+        encoding, h = self.gru(X_batch)
+        encoding = encoding.reshape(s[0], s[1]*self.output_dim)
+        encoding = self.decoder(encoding)
+            
+        for i, data in enumerate(data_batch):
+            data = data.to(device)
+            features = torch.zeros((data.num_nodes, 3 + encoding.shape[1])).to(device)
+            features[:,:3] = data.x[:,:3]
+            features[:,3:] = encoding[i,:]
+            data.__setitem__('x', features)
+        data_batch = Batch.from_data_list(data_batch)
+        y_pred = self.gnn(data_batch.x, data_batch.edge_index)
+        mask = data_batch.mask.squeeze()
+        return y_pred.squeeze()[mask], data_batch.y.squeeze()[mask]
+
 class CNN_GRU_GNN_regressor_2(nn.Module):
     def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2, hidden_features=256):
         super().__init__()
