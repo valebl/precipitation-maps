@@ -183,10 +183,10 @@ if __name__ == '__main__':
         except:
             for name, param in checkpoint["parameters"].items():
                 param = param.data
-                #if "module" in name:
-                name = name.partition("module.")[2]
+                if name.startswith("module."):
+                    name = name.partition("module.")[2]
                 model.state_dict()[name].copy_(param)
-                optimizer.load_state_dict(checkpoint["optimizer"])
+        optimizer.load_state_dict(checkpoint["optimizer"])
         epoch_start = checkpoint["epoch"] + 1
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
