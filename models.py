@@ -424,7 +424,7 @@ class CNN_GRU_GNN_regressor(nn.Module):
 
 
 class CNN_GRU_GNN_regressor_small(nn.Module):
-    def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2, hidden_features=256):
+    def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2, hidden_features=128):
         super().__init__()
         self.output_dim = output_dim
         self.encoder = nn.Sequential(
