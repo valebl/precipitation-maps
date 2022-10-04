@@ -57,8 +57,8 @@ def weighted_mse_loss(input_batch, target_batch, device='cuda'):
     weights = torch.tensor([1, 2, 5, 10, 20, 50]).to(device)
     weight = torch.ones((target_batch.shape), device=device)
     for i, target in enumerate(target_batch):
-        weight[i] = weights[0] if target <= 2 else weights[1] if target <= 5 else weights[2] if target <= 10 else weights[3] if target <= 20 else weights[5]
-        #weight[i] = weights[0] if target <= 0.01 else weights[1] if target <= 0.1 else weights[2] if target <= 0.5 else weights[3] if target <= 1 else weights[4] if target <= 5 else weights[5]
+        #weight[i] = weights[0] if target <= 2 else weights[1] if target <= 5 else weights[2] if target <= 10 else weights[3] if target <= 20 else weights[5]
+        weight[i] = weights[0] if target <= np.log(1) else weights[1] if target <= np.log(5) else weights[2] if target <= np.log(10) else weights[3] if target <= np.log(20) else weights[4] if target <= np.log(50) else weights[5]
     return (weight * (input_batch - target_batch) ** 2).sum() / weight.sum()
 
 def mse_loss_mod(input_batch, target_batch, alpha=0.25,  device='cuda'):
@@ -254,7 +254,7 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
 
     model.train()
     i = 0
-    for X, data in dataloader:
+    for X, data, _ in dataloader:
         device = 'cuda' if accelerator is None else accelerator.device
         optimizer.zero_grad()
         y_pred, y = model(X, data, device)
