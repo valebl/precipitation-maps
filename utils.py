@@ -123,7 +123,7 @@ def check_freezed_layers(model, log_path, log_file, accelerator):
 #------EPOCH LOOPS------  
 
 def train_epoch_ae(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_meter, performance_meter, val_loss_meter,
-        val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, intermediate=False):
+        val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, intermediate=False, epoch=0):
     
     loss_meter.reset()
     val_loss_meter.reset()
@@ -178,7 +178,7 @@ def train_epoch_ae(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_met
 
 
 def train_epoch_cnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_meter, performance_meter, val_loss_meter,
-            val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, intermediate=False):
+            val_performance_meter, log_path, log_file, validationloader, validate_model, accelerator, intermediate=False, epoch=0):
 
     loss_meter.reset()
     val_loss_meter.reset()
