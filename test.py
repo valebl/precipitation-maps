@@ -107,8 +107,15 @@ if __name__ == '__main__':
 
     model = Model()
     checkpoint = torch.load(args.checkpoint_input_file)
-    model.load_state_dict(checkpoint["parameters"])
-    
+    try:
+        model.load_state_dict(checkpoint["parameters"])
+    except:
+        for name, param in checkpoint["parameters"].items():
+            param = param.data
+            #if "module" in name:
+            name = name.partition("module.")[2]
+            model.state_dict()[name].copy_(param)
+                
     if accelerator is not None:
         model, optimizer, trainloader, testloader = accelerator.prepare(model, optimizer, trainloader, testloader)
     else:
