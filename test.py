@@ -29,6 +29,7 @@ parser.add_argument('--data_file', type=str, default=None)
 parser.add_argument('--target_file', type=str, default=None)
 parser.add_argument('--idx_file', type=str, default="idx_to_key.pkl")
 parser.add_argument('--checkpoint_input_file', type=str, default="checkpoint_input.pth")
+parser.add_argument('--mask_file', type=str, default=None)
 
 #-- output files
 parser.add_argument('--out_log_file', type=str, default='log.txt', help='log file')
@@ -78,7 +79,7 @@ if __name__ == '__main__':
 
     #-- create the dataset
     dataset = Dataset(path=args.input_path, input_file=args.input_file, data_file=args.data_file,
-            target_file=args.target_file, idx_file=args.idx_file, net_type=args.net_type)
+            target_file=args.target_file, idx_file=args.idx_file, net_type=args.net_type, mask_file=args.mask_file)
 
     #-- split into trainset and testset
     generator=torch.Generator().manual_seed(42)
@@ -107,14 +108,23 @@ if __name__ == '__main__':
 
     model = Model()
     checkpoint = torch.load(args.checkpoint_input_file)
-    model.load_state_dict(checkpoint["parameters"])
+
+    try:
+        model.load_state_dict(checkpoint["parameters"])
+    except:
+        for name, param in checkpoint["parameters"].items():
+            param = param.data
+            if name.startswith("module."):
+                name = name.partition("module.")[2]
+            model.state_dict()[name].copy_(param)
     
     if accelerator is not None:
         model, optimizer, trainloader, testloader = accelerator.prepare(model, optimizer, trainloader, testloader)
     else:
         model = model.cuda()   
     
-    print("Starting the test...")
+    with open(args.output_path+args.out_log_file, 'a') as f:
+        f.write("Starting the test...")
 
     #-- test the model
     start = time.time()
