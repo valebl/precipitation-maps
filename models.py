@@ -8,7 +8,7 @@ from torch_geometric.data import Data, Batch
 import sys
 
 
-class CNN_GRU_ae(nn.Module):
+class CNN_GRU_ae_new(nn.Module):
     def __init__(self, input_size=5, input_dim=128, hidden_dim=128, output_dim=128, n_layers=2):
         super().__init__() 
         self.output_dim = output_dim
@@ -38,8 +38,20 @@ class CNN_GRU_ae(nn.Module):
             nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True),        
             )
 
+        self.linear == nn.Sequential(
+            nn.Linear(output_dim, 2048),
+            nn.nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, 512),
+            nn.nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.nn.BatchNorm1d(128),
+            nn.ReLU()
+            )
+
         self.decoder = nn.Sequential(
-            nn.Linear(output_dim, 512),
+            nn.Linear(128, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, 2048),
@@ -63,6 +75,7 @@ class CNN_GRU_ae(nn.Module):
         X = X.reshape(s[0], s[1], self.output_dim)
         out, h = self.gru(X)
         out = out.reshape(s[0]*s[1], self.output_dim) # (batch_size*25, 128)
+        out = self.linear(out)
         out = self.decoder(out)
         out = out.reshape(s[0], s[1], s[2], s[3], s[4], s[5])
         return out
