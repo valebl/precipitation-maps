@@ -38,15 +38,15 @@ class CNN_GRU_ae_new(nn.Module):
             nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True),        
             )
 
-        self.linear == nn.Sequential(
+        self.linear = nn.Sequential(
             nn.Linear(output_dim, 2048),
-            nn.nn.BatchNorm1d(2048),
+            nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, 512),
-            nn.nn.BatchNorm1d(512),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, 128),
-            nn.nn.BatchNorm1d(128),
+            nn.BatchNorm1d(128),
             nn.ReLU()
             )
 
