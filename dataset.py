@@ -10,7 +10,7 @@ from torch_geometric.data import Data, Batch
 
 class Clima_dataset(Dataset):
 
-    def _load_data_into_memory(self, path, input_file, target_file, data_file, idx_file, net_type, mask_file):
+    def _load_data_into_memory(self, path, input_file, target_file, data_file, idx_file, net_type, mask_file, weights_file):
         with open(path + input_file, 'rb') as f:
             input = pickle.load(f) # time, features, levels,lat, lon
             if self.net_type == "cnn":
@@ -31,12 +31,17 @@ class Clima_dataset(Dataset):
                     mask = pickle.load(f)
             else:
                 mask = None
+            if weights_file is not None:
+                with open(path + weights_file, 'rb') as f:
+                    weights = pickle.load(f)
+            else:
+                weights = None
         else:
-            data, mask = None, None
+            data, mask, weights = None, None, None
 
-        return input, target, data, idx_to_key, mask
+        return input, target, data, idx_to_key, mask, weights
 
-    def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, get_key=False, mask_file=None, **kwargs):
+    def __init__(self, path, input_file, target_file, data_file, idx_file, net_type, get_key=False, mask_file=None, weights_file=None, **kwargs):
         super().__init__()
         self.get_key = get_key
         self.PAD = 2
@@ -47,10 +52,10 @@ class Clima_dataset(Dataset):
 
         self.net_type = net_type
         self.path = path
-        self.input_file, self.target_file, self.data_file, self.idx_file, self.mask_file = input_file, target_file, data_file, idx_file, mask_file
+        self.input_file, self.target_file, self.data_file, self.idx_file, self.mask_file, self.weights_file = input_file, target_file, data_file, idx_file, mask_file, weights_file
 
-        self.input, self.target, self.data, self.idx_to_key, self.mask = self._load_data_into_memory(self.path,
-                self.input_file, self.target_file, self.data_file, self.idx_file, self.net_type, self.mask_file)
+        self.input, self.target, self.data, self.idx_to_key, self.mask, self.weights = self._load_data_into_memory(self.path,
+                self.input_file, self.target_file, self.data_file, self.idx_file, self.net_type, self.mask_file, self.weights_file)
         self.length = len(self.idx_to_key)
 
     def __len__(self):
@@ -79,9 +84,13 @@ class Clima_dataset(Dataset):
                 x = torch.tensor(self.data[space_idx]['x'])
                 if self.mask is not None:
                     mask = torch.tensor(self.mask[k].astype(bool))  #torch.where(y==0, False, True)
-                    data = Data(x=x, edge_index=edge_index, y=y, mask=mask)
+                    if self.weights is not None:
+                        weights = torch.tensor(self.weights[k])
+                        data = Data(x=x, edge_index=edge_index, y=y, mask=mask, weights=weights)
+                    else:
+                        data = Data(x=x, edge_index=edge_index, y=y, mask=mask, weights=None)
                 else:
-                    data = Data(x=x, edge_index=edge_index, y=y)
+                    data = Data(x=x, edge_index=edge_index, y=y, mask=None, weights=None)
                 #print(y, torch.where(y.squeeze()>=np.log(0.1),1,0))
                 #sys.exit()
                 return input, data
