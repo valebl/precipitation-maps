@@ -31,6 +31,7 @@ parser.add_argument('--target_file', type=str, default=None)
 parser.add_argument('--mask_file', type=str, default=None)
 parser.add_argument('--idx_file', type=str)
 parser.add_argument('--checkpoint_ae_file', type=str)
+parser.add_argument('--weights_file', type=str, default=None)
 
 #-- output files
 parser.add_argument('--out_log_file', type=str, default='log.txt', help='log file')
@@ -117,7 +118,8 @@ if __name__ == '__main__':
 
     #-- create the dataset
     dataset = Dataset(path=args.input_path, input_file=args.input_file, data_file=args.data_file,
-        target_file=args.target_file, idx_file=args.idx_file, net_type=args.net_type, mask_file=args.mask_file)
+        target_file=args.target_file, idx_file=args.idx_file, net_type=args.net_type, 
+        mask_file=args.mask_file, weights_file=args.weights_file)
 
     #-- split into trainset and testset
     generator=torch.Generator().manual_seed(42)
@@ -126,7 +128,7 @@ if __name__ == '__main__':
     trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset), generator=generator)
     
     # split testset into validationset and testset
-    len_testset = int(len(testset) * 0.5)
+    len_testset = int(len(testset) * 0.9999)
     len_validationset = len(testset) - len_testset
     testset, validationset = torch.utils.data.random_split(testset, lengths=(len_testset, len_validationset), generator=generator)
 
