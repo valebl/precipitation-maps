@@ -263,7 +263,7 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
         )
         
         self.linear = nn.Sequential(
-            nn.Linear(output_dim, 2048),
+            nn.Linear(25*output_dim, 2048),
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, 512),
@@ -304,7 +304,7 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
         X_batch = self.encoder(X_batch.to(device))
         X_batch = X_batch.reshape(s[0], s[1], self.output_dim)
         encoding, h = self.gru(X_batch)
-        encoding = encoding.reshape(s[0], s[1]*self.output_dim)
+        encoding = encoding.reshape(s[0], s[1]*self.output_dim) # 25*128
         encoding = self.linear(encoding)
             
         for i, data in enumerate(data_batch):
@@ -316,7 +316,8 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
         mask = data_batch.mask.squeeze()
-        return y_pred.squeeze()[mask], data_batch.y.squeeze()[mask], data_batch.weights[mask], data_batch.batch[mask]
+        return y_pred.squeeze()[mask], data_batch.y.squeeze()[mask], data_batch.batch[mask]
+        #return y_pred.squeeze()[mask], data_batch.y.squeeze()[mask], data_batch.weights[mask], data_batch.batch[mask]
 
 
 class CNN_GRU_GNN_regressor(nn.Module):
