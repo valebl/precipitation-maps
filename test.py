@@ -124,7 +124,7 @@ if __name__ == '__main__':
         model = model.cuda()   
     
     with open(args.output_path+args.out_log_file, 'a') as f:
-        f.write("Starting the test...")
+        f.write("\nStarting the test...")
 
     #-- test the model
     start = time.time()
