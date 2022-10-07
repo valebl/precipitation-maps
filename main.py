@@ -128,7 +128,7 @@ if __name__ == '__main__':
     trainset, testset = torch.utils.data.random_split(dataset, lengths=(len_trainset, len_testset), generator=generator)
     
     # split testset into validationset and testset
-    len_testset = int(len(testset) * 0.9999)
+    len_testset = int(len(testset) * 0.5)
     len_validationset = len(testset) - len_testset
     testset, validationset = torch.utils.data.random_split(testset, lengths=(len_testset, len_validationset), generator=generator)
 
