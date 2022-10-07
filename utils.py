@@ -53,13 +53,8 @@ def accuracy(prediction, target):
     return acc
 
 
-def weighted_mse_loss(input_batch, target_batch, device='cuda'):
-    weights = torch.tensor([1, 2, 5, 10, 20, 50]).to(device)
-    weight = torch.ones((target_batch.shape), device=device)
-    for i, target in enumerate(target_batch):
-        #weight[i] = weights[0] if target <= 2 else weights[1] if target <= 5 else weights[2] if target <= 10 else weights[3] if target <= 20 else weights[5]
-        weight[i] = weights[0] if target <= np.log(1) else weights[1] if target <= np.log(5) else weights[2] if target <= np.log(10) else weights[3] if target <= np.log(20) else weights[4] if target <= np.log(50) else weights[5]
-    return (weight * (input_batch - target_batch) ** 2).sum() / weight.sum()
+def weighted_mse_loss(input_batch, target_batch, weights):
+    return (weights * (input_batch - target_batch) ** 2).sum() / weights.sum()
 
 def mse_loss_mod(input_batch, target_batch, alpha=0.25,  device='cuda'):
     return ((input_batch - target_batch) ** 2).sum() / input_batch.shape[0] + alpha * ((torch.log(input_batch+10e-9) - torch.log(target_batch+10e-9)) ** 2).sum() / input_batch.shape[0]
@@ -72,7 +67,7 @@ def r2_score(output, target):
     return r2
 
 
-def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, fine_tuning=True, net_names=['encoder', 'gru']):
+def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, fine_tuning=True, net_names=['encoder', 'gru', 'linear']):
     if accelerator is None or accelerator.is_main_process:
         with open(log_path+log_file, 'a') as f:
             f.write("\nLoading encoder parameters.") 
@@ -254,10 +249,14 @@ def train_epoch_gnn(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
 
     model.train()
     i = 0
-    for X, data, _ in dataloader:
+    for X, data in dataloader:
         device = 'cuda' if accelerator is None else accelerator.device
         optimizer.zero_grad()
-        y_pred, y = model(X, data, device)
+        #y_pred, y, weights, _  = model(X, data, device)
+        #if weights is not None:
+        #    loss = loss_fn(y_pred, y, weights)
+        #else:
+        y_pred, y, _  = model(X, data, device)
         loss = loss_fn(y_pred, y)
         if accelerator is None:
             loss.backward()
@@ -482,7 +481,7 @@ def validate_gnn(model, dataloader, accelerator, loss_fn, val_loss_meter, val_pe
     with torch.no_grad():
         for X, data in dataloader:
             device = 'cuda' if accelerator is None else accelerator.device
-            y_pred, y = model(X, data, device)
+            y_pred, y, _ = model(X, data, device)
             if val_performance_meter is not None:
                 # for cross entropy loss                                                <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                 #y_pred = torch.where(y_pred > 0.5, 1, 0)
@@ -490,6 +489,9 @@ def validate_gnn(model, dataloader, accelerator, loss_fn, val_loss_meter, val_pe
                 #y = y.to(torch.int64)
                 perf = accuracy(y_pred, y)
                 val_performance_meter.update(val=perf, n=X.shape[0])
+            #if weights is not None:
+            #    loss = loss_fn(y_pred, y, weights)
+            #else:
             loss = loss_fn(y_pred, y)
             val_loss_meter.update(loss.item(), X.shape[0])
         val_loss_meter.add_iter_loss()
@@ -577,10 +579,15 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
     with torch.no_grad():
         for X, data in dataloader:
             device = 'cuda' if accelerator is None else accelerator.device
-            y_pred, y = model(X, data, device)
-            loss = loss_fn(y_pred, y) if loss_fn is not None else None
+            y_pred, y, _ = model(X, data, device)
             if loss_fn is not None:
+            #    if weights is not None:
+            #        loss = loss_fn(y_pred, y, weights)
+            #    else:
+                loss = loss_fn(y_pred, y)
                 loss_meter.update(loss.item(), X.shape[0])
+            else:
+                loss = None
             if performance is not None:
                 perf = accuracy(y_pred, y)
                 perf_meter.update(perf, X.shape[0])
