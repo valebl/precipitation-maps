@@ -36,6 +36,9 @@ class CNN_GRU_ae_new(nn.Module):
         # define the decoder modules
         self.gru = nn.Sequential(
             nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True),        
+            )
+
+        self.linear = nn.Sequential(
             nn.Flatten(),
             nn.Linear(25*hidden_dim, 2048),
             nn.BatchNorm1d(2048),
@@ -46,6 +49,18 @@ class CNN_GRU_ae_new(nn.Module):
             nn.Linear(512, 128),
             nn.BatchNorm1d(128),
             nn.ReLU()
+            )
+
+        self.linear_decoder = nn.Sequential(
+            nn.Linear(128, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Linear(512, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, 25*hidden_dim),
+            nn.BatchNorm1d(25*hidden_dim),
+            nn.ReLU() # 3200
             )
 
         self.decoder = nn.Sequential(
@@ -73,11 +88,12 @@ class CNN_GRU_ae_new(nn.Module):
         X = X.reshape(s[0], s[1], self.output_dim)
         out, h = self.gru(X)
         #out = out.reshape(s[0]*s[1], self.output_dim) # (batch_size*25, 128)
-        #out = self.linear(out)
+        out = self.linear(out)
+        out = self.linear_decoder(out)
+        out = out.reshape(s[0]*s[1], self.output_dim) # (batch_size*25, 128)
         out = self.decoder(out)
         out = out.reshape(s[0], s[1], s[2], s[3], s[4], s[5])
         return out
-
 
 class CNN_GRU_GNN_classifier(nn.Module):
     def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2, hidden_features=256):
@@ -258,6 +274,9 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
         # define the decoder modules
         self.gru = nn.Sequential(
             nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True),
+            )
+
+        self.linear = nn.Sequential(
             nn.Flatten(),
             nn.Linear(25*hidden_dim, 2048),
             nn.BatchNorm1d(2048),
@@ -301,7 +320,7 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
         X_batch = X_batch.reshape(s[0], s[1], self.output_dim)
         encoding, h = self.gru(X_batch)
         #encoding = encoding.reshape(s[0], s[1]*self.output_dim) # 25*128
-        #encoding = self.linear(encoding)
+        encoding = self.linear(encoding)
             
         for i, data in enumerate(data_batch):
             data = data.to(device)
