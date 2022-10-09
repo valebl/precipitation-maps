@@ -147,11 +147,12 @@ if __name__ == '__main__':
             f.write(f"\nRAM memory {round((used_memory/total_memory) * 100, 2)} %")
     
     model = Model()
+    net_names = ["encoder.", "gru.", "linear."]
 
     #-- either load the model checkpoint or load the parameters for the encoder
     if args.load_ae_checkpoint is True and args.ctd_training is False:
         model = load_encoder_checkpoint(model, args.checkpoint_ae_file, args.output_path, args.out_log_file, accelerator,
-                fine_tuning=args.fine_tuning, net_names=["encoder", "gru"])
+                fine_tuning=args.fine_tuning, net_names=net_names)
     elif args.load_ae_checkpoint is True and args.ctd_training is True:
         raise RuntimeError("Either load the ae parameters or continue the training.")
 
@@ -160,7 +161,8 @@ if __name__ == '__main__':
         optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
         #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=.9)
     else:
-        optimizer = torch.optim.Adam([param for name, param in model.named_parameters() if 'encoder' not in name], lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.weight_decay)
+        #optimizer = torch.optim.Adam([param if n not in name for name, param in model.named_parameters() for n in net_names], lr=args.lr, weight_decay=args.weight_decay)
     #scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001, total_steps=int(args.epochs*len(trainset)/args.batch_size)+2)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=0.5)
     #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1, cycle_momentum=False)
@@ -204,7 +206,7 @@ if __name__ == '__main__':
         num_epochs=args.epochs, accelerator=accelerator, log_path=args.output_path, log_file=args.out_log_file, lr_scheduler=scheduler,
         checkpoint_name=args.output_path+args.out_checkpoint_file, loss_name=args.output_path+args.out_loss_file, train_epoch=train_epoch,
         ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd, performance=args.performance, validationloader=validationloader,
-        validate_model=validate_model, epoch_start=epoch_start)
+        validate_model=validate_model, epoch_start=epoch_start, fine_tuning=args.fine_tuning)
 
     end = time.time()
 

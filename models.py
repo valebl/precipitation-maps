@@ -252,22 +252,22 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
 
         self.encoder = nn.Sequential(
             nn.Conv3d(input_size, 64, kernel_size=3, padding=(1,1,1), stride=1), # input of shape = (batch_size, n_levels, n_vars, lat, lon)
-            nn.BatchNorm3d(64),
+            nn.BatchNorm3d(64, track_running_stats=False),
             nn.ReLU(),
             nn.Conv3d(64, 64, kernel_size=3, padding=(1,1,1), stride=1),
-            nn.BatchNorm3d(64),
+            nn.BatchNorm3d(64, track_running_stats=False),
             nn.ReLU(),
             nn.MaxPool3d(kernel_size=2, padding=(1,1,1), stride=2),
             nn.Conv3d(64, 256, kernel_size=3, padding=(1,1,1), stride=1),
-            nn.BatchNorm3d(256),
+            nn.BatchNorm3d(256, track_running_stats=False),
             nn.ReLU(),
             nn.MaxPool3d(kernel_size=2, padding=(1,0,0), stride=2),
             nn.Flatten(),
             nn.Linear(2048, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(512, track_running_stats=False),
             nn.ReLU(),
             nn.Linear(512, output_dim),
-            nn.BatchNorm1d(output_dim),
+            nn.BatchNorm1d(output_dim, track_running_stats=False),
             nn.ReLU()
             )
 
@@ -279,13 +279,13 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
         self.linear = nn.Sequential(
             nn.Flatten(),
             nn.Linear(25*hidden_dim, 2048),
-            nn.BatchNorm1d(2048),
+            nn.BatchNorm1d(2048, track_running_stats=False),
             nn.ReLU(),
             nn.Linear(2048, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(512, track_running_stats=False),
             nn.ReLU(),
             nn.Linear(512, 128),
-            nn.BatchNorm1d(128),
+            nn.BatchNorm1d(128, track_running_stats=False),
             nn.ReLU()
         )
         

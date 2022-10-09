@@ -4,6 +4,7 @@ import sys
 import pickle
 
 import torch
+import torch.nn as nn
 from torch_geometric.data import Batch
 from torch.optim.lr_scheduler import _LRScheduler, OneCycleLR
 
@@ -82,9 +83,13 @@ def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, 
                     with open(log_path+log_file, 'a') as f:
                         f.write(f"\nLoading parameters '{name}'")
                 param = param.data
-                if "module" in name:
+                if name.startswith("module"):
                     name = name.partition("module.")[2]
-                model.state_dict()[name].copy_(param)
+                try:
+                    model.state_dict()[name].copy_(param)
+                except:
+                     with open(log_path+log_file, 'a') as f:
+                        f.write(f"\nParam {name} was not loaded..")
     if not fine_tuning:
         for net_name in net_names:
             [param.requires_grad_(False) for name, param in model.named_parameters() if net_name in name]
@@ -325,7 +330,7 @@ def train_epoch_gru(model, dataloader, loss_fn, optimizer, lr_scheduler, loss_me
 
 def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         log_path, log_file, train_epoch, accelerator, validate_model, validationloader,
-        lr_scheduler=None, checkpoint_name="checkpoint.pth", loss_name="loss.csv",
+        fine_tuning, lr_scheduler=None, checkpoint_name="checkpoint.pth", loss_name="loss.csv",
         ctd_training=False, checkpoint_ctd="../checkpoint.pth",
         save_interval=1, performance=None, epoch_start=0):
 
@@ -348,6 +353,21 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
     
     model.train()
     
+    #if not fine_tuning:
+    #    i = 0
+    #    for m in model.modules():
+    #        if not isinstance(m, nn.Sequential) and i < 8:
+    #            if isinstance(m, nn.BatchNorm1d) or isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
+    #                m.eval()
+    #                if accelerator is None or accelerator.is_main_process:
+    #                    with open(log_path+log_file, 'a') as f:
+    #                        f.write(f"\nEval module {m}")
+    #            i += 1
+                               
+    #    for m in model.backbone.modules():
+    #    if isinstance(m, nn.BatchNorm1d) or isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
+    #        m.eval()
+
     # define average meter objects
     loss_meter = AverageMeter()
     val_loss_meter = AverageMeter()
