@@ -379,24 +379,24 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
         #gnn
         self.gnn = geometric_nn.Sequential('x, edge_index', [
             (geometric_nn.BatchNorm(3+128), 'x -> x'),
-            (GATv2Conv(3+128, 128, heads=2, aggr='mean', dropout=0.5),  'x, edge_index -> x'), # max, mean, add ...
-            (geometric_nn.BatchNorm(256), 'x -> x'),
+            (GATv2Conv(3+128, 128, heads=4, aggr='mean', dropout=0.2),  'x, edge_index -> x'), # max, mean, add ...
+            (geometric_nn.BatchNorm(512), 'x -> x'),
             nn.ReLU(),
-            (GATv2Conv(256, 128, heads=2, aggr='mean'), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(256), 'x -> x'),
+            (GATv2Conv(512, 128, heads=4, aggr='mean', dropout=0.2), 'x, edge_index -> x'),
+            (geometric_nn.BatchNorm(512), 'x -> x'),
             nn.ReLU(),
-            (GATv2Conv(256, 128, aggr='mean'), 'x, edge_index -> x'),
+            (GATv2Conv(512, 128, heads=1, aggr='mean', dropout=0.2), 'x, edge_index -> x'),
             (geometric_nn.BatchNorm(128), 'x -> x'),
             nn.ReLU(),
-            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(128), 'x -> x'),
-            nn.ReLU(),
-            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(128), 'x -> x'),
-            nn.ReLU(),
-            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(128), 'x -> x'),
-            nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
             (GATv2Conv(128, 1, aggr='mean'), 'x, edge_index -> x'),
             ])
 
