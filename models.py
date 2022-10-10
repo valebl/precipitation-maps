@@ -180,7 +180,7 @@ class CNN_GRU_GNN_classifier_new(nn.Module):
             data.__setitem__('x', features)
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
-        return y_pred, data_batch.y.squeeze().to(torch.long), None, None
+        return y_pred, data_batch.y.squeeze().to(torch.long), data_batch.batch
 
 class CNN_GRU_GNN_classifier(nn.Module):
     def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2, hidden_features=256):
