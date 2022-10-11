@@ -481,7 +481,7 @@ class CNN_GRU_GNN_regressor(nn.Module):
             (GATv2Conv(128, 1, aggr='mean'), 'x, edge_index -> x'),
             ])
 
-    def forward(self, X_batch, data_batch, device): # data_batch is a list of Data object
+    def forward(self, X_batch, data_batch, device, predict=False): # data_batch is a list of Data object
         s = X_batch.shape
         X_batch = X_batch.reshape(s[0]*s[1], s[2], s[3], s[4], s[5])
         X_batch = self.encoder(X_batch.to(device))
@@ -498,8 +498,13 @@ class CNN_GRU_GNN_regressor(nn.Module):
             data.__setitem__('x', features)
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
-        mask = data_batch.mask.squeeze()
-        return y_pred.squeeze()[mask], data_batch.y.squeeze()[mask], data_batch.weights[mask], data_batch.batch[mask]
+        if predict:
+            return y_pred.squeeze(), data_batch.batch
+        if data_batch.mask is not None:
+            mask = data_batch.mask.squeeze()
+            return y_pred.squeeze()[mask], data_batch.y.squeeze()[mask], data_batch.batch[mask]
+        else:
+            return y_pred.squeeze(), data_batch.y.squeeze(), data_batch.batch
 
 
 class CNN_GRU_GNN_regressor_small(nn.Module):
