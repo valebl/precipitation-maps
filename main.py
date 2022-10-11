@@ -157,17 +157,12 @@ if __name__ == '__main__':
         raise RuntimeError("Either load the ae parameters or continue the training.")
 
     #-- define the optimizer and trainable parameters
-    if args.load_ae_checkpoint and args.fine_tuning:
-        optimizer =  torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-        #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=.9)
-    else:
+    if not args.fine_tuning:
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.weight_decay)
-        #optimizer = torch.optim.Adam([param if n not in name for name, param in model.named_parameters() for n in net_names], lr=args.lr, weight_decay=args.weight_decay)
-    #scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001, total_steps=int(args.epochs*len(trainset)/args.batch_size)+2)
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+                
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=0.5)
-    #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1, cycle_momentum=False)
-    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5, 
-    #        threshold_mode='rel',threshold=0.0001, min_lr=0.0000001)
 
     if accelerator is not None:
         model, optimizer, trainloader, testloader, validationloader = accelerator.prepare(model, optimizer, trainloader, testloader, validationloader)
