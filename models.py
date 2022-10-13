@@ -30,7 +30,7 @@ class CNN_GRU_ae_new(nn.Module):
             nn.ReLU(),
             nn.Linear(512, output_dim),
             nn.BatchNorm1d(output_dim),
-            nn.ReLU()            
+            nn.ReLU(),
             )   
 
         # define the decoder modules
@@ -40,33 +40,34 @@ class CNN_GRU_ae_new(nn.Module):
 
         self.linear = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(25*hidden_dim, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(),
-            nn.Linear(2048, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Linear(512, 128),
+            nn.Linear(25*hidden_dim, 128),
             nn.BatchNorm1d(128),
-            nn.ReLU()
+            nn.ReLU(),,
+            #nn.Linear(2048, 512),
+            #nn.BatchNorm1d(512),
+            #nn.ReLU()
+            #nn.Linear(512, 128),
+            #nn.BatchNorm1d(128),
+            #nn.ReLU()
             )
 
         self.linear_decoder = nn.Sequential(
-            nn.Linear(128, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Linear(512, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(),
-            nn.Linear(2048, 25*hidden_dim),
+            #nn.Linear(128, 512),
+            #nn.BatchNorm1d(512),
+            #nn.ReLU(),
+            #nn.Linear(512, 2048),
+            #nn.BatchNorm1d(2048),
+            #nn.ReLU(),
+            nn.Linear(128, 25*hidden_dim),
             nn.BatchNorm1d(25*hidden_dim),
-            nn.ReLU() # 3200
+            nn.ReLU(), # 3200
             )
 
         self.decoder = nn.Sequential(
             nn.Linear(128, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
+            #nn.Dropout(p=0.5),
             nn.Linear(512, 2048),
             nn.Unflatten(-1,(256, 2, 2, 2)),
             nn.Upsample(size=(3,4,4)),
@@ -128,38 +129,38 @@ class CNN_GRU_GNN_classifier_new(nn.Module):
 
         self.linear = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(25*hidden_dim, 2048),
-            nn.BatchNorm1d(2048, track_running_stats=False),
-            nn.ReLU(),
-            nn.Linear(2048, 512),
-            nn.BatchNorm1d(512, track_running_stats=False),
-            nn.ReLU(),
-            nn.Linear(512, 128),
+            nn.Linear(25*hidden_dim, 128),
+            #nn.BatchNorm1d(2048, track_running_stats=False),
+            #nn.ReLU(),
+            #nn.Linear(2048, 512),
+            #nn.BatchNorm1d(512, track_running_stats=False),
+            #nn.ReLU(),
+            #nn.Linear(512, 128),
             nn.BatchNorm1d(128, track_running_stats=False),
             nn.ReLU()
         )
         
-        #gnn
+        #gnn            
         self.gnn = geometric_nn.Sequential('x, edge_index', [
             (geometric_nn.BatchNorm(3+128), 'x -> x'),
-            (GATv2Conv(3+128, 128, heads=2, aggr='mean', dropout=0.5),  'x, edge_index -> x'), # max, mean, add ...
-            (geometric_nn.BatchNorm(256), 'x -> x'),
+            (GATv2Conv(3+128, 128, heads=4, aggr='mean', dropout=0.2),  'x, edge_index -> x'), # max, mean, add ...
+            (geometric_nn.BatchNorm(512), 'x -> x'),
             nn.ReLU(),
-            (GATv2Conv(256, 128, heads=2, aggr='mean'), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(256), 'x -> x'),
+            (GATv2Conv(512, 128, heads=4, aggr='mean', dropout=0.2), 'x, edge_index -> x'),
+            (geometric_nn.BatchNorm(512), 'x -> x'),
             nn.ReLU(),
-            (GATv2Conv(256, 128, aggr='mean'), 'x, edge_index -> x'),
+            (GATv2Conv(512, 128, heads=1, aggr='mean', dropout=0.2), 'x, edge_index -> x'),
             (geometric_nn.BatchNorm(128), 'x -> x'),
             nn.ReLU(),
-            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(128), 'x -> x'),
-            nn.ReLU(),
-            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(128), 'x -> x'),
-            nn.ReLU(),
-            (GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(128), 'x -> x'),
-            nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
+            #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
+            #(geometric_nn.BatchNorm(128), 'x -> x'),
+            #nn.ReLU(),
             (GATConv(128, 2, aggr='mean'), 'x, edge_index -> x'), # max, mean, add ...
             nn.Softmax(dim=-1)
             ])
@@ -365,13 +366,13 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
 
         self.linear = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(25*hidden_dim, 2048),
-            nn.BatchNorm1d(2048, track_running_stats=False),
-            nn.ReLU(),
-            nn.Linear(2048, 512),
-            nn.BatchNorm1d(512, track_running_stats=False),
-            nn.ReLU(),
-            nn.Linear(512, 128),
+            nn.Linear(25*hidden_dim, 128),
+            #nn.BatchNorm1d(2048, track_running_stats=False),
+            #nn.ReLU(),
+            #nn.Linear(2048, 512),
+            #nn.BatchNorm1d(512, track_running_stats=False),
+            #nn.ReLU(),
+            #nn.Linear(512, 128),
             nn.BatchNorm1d(128, track_running_stats=False),
             nn.ReLU()
         )
