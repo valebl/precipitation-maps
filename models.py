@@ -42,7 +42,7 @@ class CNN_GRU_ae_new(nn.Module):
             nn.Flatten(),
             nn.Linear(25*hidden_dim, 128),
             nn.BatchNorm1d(128),
-            nn.ReLU(),,
+            nn.ReLU(),
             #nn.Linear(2048, 512),
             #nn.BatchNorm1d(512),
             #nn.ReLU()
@@ -380,15 +380,15 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
         #gnn
         self.gnn = geometric_nn.Sequential('x, edge_index', [
             (geometric_nn.BatchNorm(3+128), 'x -> x'),
-            (GATv2Conv(3+128, 128, heads=4, aggr='mean', dropout=0.2),  'x, edge_index -> x'), # max, mean, add ...
-            (geometric_nn.BatchNorm(512), 'x -> x'),
-            nn.ReLU(),
-            (GATv2Conv(512, 128, heads=4, aggr='mean', dropout=0.2), 'x, edge_index -> x'),
-            (geometric_nn.BatchNorm(512), 'x -> x'),
-            nn.ReLU(),
-            (GATv2Conv(512, 128, heads=1, aggr='mean', dropout=0.2), 'x, edge_index -> x'),
+            (GATv2Conv(3+128, 128, heads=1, aggr='mean', dropout=0.2),  'x, edge_index -> x'), # max, mean, add ...
             (geometric_nn.BatchNorm(128), 'x -> x'),
             nn.ReLU(),
+            (GATv2Conv(128, 64, heads=1, aggr='mean', dropout=0.2), 'x, edge_index -> x'),
+            (geometric_nn.BatchNorm(64), 'x -> x'),
+            nn.ReLU(),
+            (GATv2Conv(64, 16, heads=1, aggr='mean', dropout=0.2), 'x, edge_index -> x'),
+            (geometric_nn.BatchNorm(16), 'x -> x'),
+            nn.ReLU(),
             #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
             #(geometric_nn.BatchNorm(128), 'x -> x'),
             #nn.ReLU(),
@@ -398,7 +398,7 @@ class CNN_GRU_GNN_regressor_new(nn.Module):
             #(GATv2Conv(128, 128, aggr='mean'), 'x, edge_index -> x'),
             #(geometric_nn.BatchNorm(128), 'x -> x'),
             #nn.ReLU(),
-            (GATv2Conv(128, 1, aggr='mean'), 'x, edge_index -> x'),
+            (GATv2Conv(16, 1, aggr='max'), 'x, edge_index -> x'),
             ])
 
     def forward(self, X_batch, data_batch, device): # data_batch is a list of Data object
