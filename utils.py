@@ -88,8 +88,9 @@ def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, 
                 try:
                     model.state_dict()[name].copy_(param)
                 except:
-                     with open(log_path+log_file, 'a') as f:
-                        f.write(f"\nParam {name} was not loaded..")
+                     if accelerator is None or accelerator.is_main_process:
+                        with open(log_path+log_file, 'a') as f:
+                            f.write(f"\nParam {name} was not loaded..")
     if not fine_tuning:
         for net_name in net_names:
             [param.requires_grad_(False) for name, param in model.named_parameters() if net_name in name]
