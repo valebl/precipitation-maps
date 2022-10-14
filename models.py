@@ -28,9 +28,11 @@ class CNN_GRU_ae_new(nn.Module):
             nn.Linear(2048, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
+            nn.Dropout(p=0.5),
             nn.Linear(512, output_dim),
             nn.BatchNorm1d(output_dim),
             nn.ReLU(),
+            nn.Dropout(p=0.5)
             )   
 
         # define the decoder modules
@@ -40,9 +42,10 @@ class CNN_GRU_ae_new(nn.Module):
 
         self.linear = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(25*hidden_dim, 128),
-            nn.BatchNorm1d(128),
+            nn.Linear(25*hidden_dim, 512),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
+            nn.Dropout(p=0.5),
             #nn.Linear(2048, 512),
             #nn.BatchNorm1d(512),
             #nn.ReLU()
@@ -58,15 +61,17 @@ class CNN_GRU_ae_new(nn.Module):
             #nn.Linear(512, 2048),
             #nn.BatchNorm1d(2048),
             #nn.ReLU(),
-            nn.Linear(128, 25*hidden_dim),
+            nn.Linear(512, 25*hidden_dim),
             nn.BatchNorm1d(25*hidden_dim),
             nn.ReLU(), # 3200
+            nn.Dropout(p=0.5)
             )
 
         self.decoder = nn.Sequential(
             nn.Linear(128, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
+            nn.Dropout(p=0.5),
             #nn.Dropout(p=0.5),
             nn.Linear(512, 2048),
             nn.Unflatten(-1,(256, 2, 2, 2)),
@@ -243,7 +248,7 @@ class CNN_GRU_GNN_classifier(nn.Module):
             nn.Softmax(dim=-1)
             ])
 
-    def forward(self, X_batch, data_batch, device): # data_batch is a list of Data object
+    def forward(self, X_batch, data_batch, device, predict=False): # data_batch is a list of Data object
         s = X_batch.shape
         X_batch = X_batch.reshape(s[0]*s[1], s[2], s[3], s[4], s[5])
         X_batch = self.encoder(X_batch.to(device))
@@ -260,6 +265,8 @@ class CNN_GRU_GNN_classifier(nn.Module):
             data.__setitem__('x', features)
         data_batch = Batch.from_data_list(data_batch)
         y_pred = self.gnn(data_batch.x, data_batch.edge_index)
+        if predict:
+            return y_pred.squeeze(), data_batch.batch
         return y_pred, data_batch.y.squeeze().to(torch.long), None, None
 
 
