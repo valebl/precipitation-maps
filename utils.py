@@ -334,40 +334,8 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
         fine_tuning, lr_scheduler=None, checkpoint_name="checkpoint.pth", loss_name="loss.csv",
         ctd_training=False, checkpoint_ctd="../checkpoint.pth",
         save_interval=1, performance=None, epoch_start=0):
-
-    #if ctd_training:
-    #    if accelerator is None or accelerator.is_main_process:
-    #        with open(log_path+log_file, 'a') as f:
-    #            f.write("\nLoading the checkpoint to continue the training.")
-    #    checkpoint = torch.load(checkpoint_ctd)
-    #    try:
-    #        _ = model.load_state_dict(checkpoint["parameters"])
-    #    except:
-    #        for name, param in checkpoint["parameters"].items():
-    #            param = param.data
-    #            if "module" in name:
-    #                name = name.partition("module.")[2]
-    #            model.state_dict()[name].copy_(param)
-    #        optimizer.load_state_dict(checkpoint["optimizer"])
-    #        epoch_start = checkpoint["epoch"] + 1                       #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    #    #loss = checkpoint["loss"]
     
     model.train()
-    
-    #if not fine_tuning:
-    #    i = 0
-    #    for m in model.modules():
-    #        if not isinstance(m, nn.Sequential) and i < 8:
-    #            if isinstance(m, nn.BatchNorm1d) or isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
-    #                m.eval()
-    #                if accelerator is None or accelerator.is_main_process:
-    #                    with open(log_path+log_file, 'a') as f:
-    #                        f.write(f"\nEval module {m}")
-    #            i += 1
-                               
-    #    for m in model.backbone.modules():
-    #    if isinstance(m, nn.BatchNorm1d) or isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
-    #        m.eval()
 
     # define average meter objects
     loss_meter = AverageMeter()
@@ -401,7 +369,6 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
             val_performance_meter.add_loss()
 
         if lr_scheduler is not None and lr_scheduler.get_last_lr()[0] > 0.000001:
-            #if not isinstance(lr_scheduler, (_LRScheduler, OneCycleLR)):
             lr_scheduler.step()
 
         if accelerator is None or accelerator.is_main_process:
@@ -426,30 +393,8 @@ def train_model(model, dataloader, loss_fn, optimizer, num_epochs,
                 "parameters": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "epoch": epoch,
-                #"loss": loss_meter.avg
                 }
             torch.save(checkpoint_dict, checkpoint_name)
-
-    if accelerator is None or accelerator.is_main_process:
-        np.savetxt(log_path+"train_loss.csv", loss_meter.avg_list)
-        np.savetxt(log_path+"val_loss.csv", val_loss_meter.avg_list)
-        np.savetxt(log_path+"train_loss_iter.csv", loss_meter.avg_iter_list)
-        np.savetxt(log_path+"val_loss_iter.csv", val_loss_meter.avg_iter_list)
-        if performance is not None:
-            np.savetxt(log_path+"train_perf.csv", performance_meter.avg_list)
-            np.savetxt(log_path+"val_perf.csv", val_performance_meter.avg_list)
-            np.savetxt(log_path+"train_perf_iter.csv", performance_meter.avg_iter_list)
-            np.savetxt(log_path+"val_perf_iter.csv", val_performance_meter.avg_iter_list)
-        checkpoint_dict = {
-            "parameters": model.state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "epoch": epoch,
-            "loss": loss_meter.avg             
-            }
-        torch.save(checkpoint_dict, checkpoint_name)
-    
-    return loss_meter.sum, loss_meter.avg_list
-
 
 #----- VALIDATION ------
 
@@ -472,29 +417,6 @@ def validate_ae(model, dataloader, accelerator, loss_fn, val_loss_meter, val_per
     model.train()
     return
 
-def validate_gru(model, dataloader, accelerator, loss_fn, val_loss_meter, val_performance_meter):
-
-    model.eval()
-    with torch.no_grad():
-        for X, y in dataloader:
-            if accelerator is None:    
-                X = X.cuda()
-                y = y.cuda()
-            y_pred = model(X).squeeze()
-            if val_performance_meter is not None:
-                # for cross entropy loss                                            <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                #y_pred = torch.where(y_pred > 0.5, 1, 0)
-                #y_pred = y_pred.to(torch.int64)
-                #y = y.to(torch.int64)
-                perf = accuracy(y_pred, y)
-                val_performance_meter.update(val=perf, n=X.shape[0])
-            loss = loss_fn(y_pred, y)
-            val_loss_meter.update(loss.item(), X.shape[0])
-        val_loss_meter.add_iter_loss()
-        if val_performance_meter is not None:
-            val_performance_meter.add_iter_loss()
-    model.train()
-    return
 
 def validate_gnn(model, dataloader, accelerator, loss_fn, val_loss_meter, val_performance_meter):
 
@@ -504,15 +426,8 @@ def validate_gnn(model, dataloader, accelerator, loss_fn, val_loss_meter, val_pe
             device = 'cuda' if accelerator is None else accelerator.device
             y_pred, y, _ = model(X, data, device)
             if val_performance_meter is not None:
-                # for cross entropy loss                                                <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                #y_pred = torch.where(y_pred > 0.5, 1, 0)
-                #y_pred = y_pred.to(torch.int64)
-                #y = y.to(torch.int64)
                 perf = accuracy(y_pred, y)
                 val_performance_meter.update(val=perf, n=X.shape[0])
-            #if weights is not None:
-            #    loss = loss_fn(y_pred, y, weights)
-            #else:
             loss = loss_fn(y_pred, y)
             val_loss_meter.update(loss.item(), X.shape[0])
         val_loss_meter.add_iter_loss()
@@ -546,8 +461,6 @@ def test_model_ae(model, dataloader, log_path, log_file, accelerator, loss_fn=No
                     pickle.dump(X_pred, f)
                 with open(log_path+"X.pkl", 'wb') as f:
                     pickle.dump(X, f)
-                #with open(log_path+log_file, 'a') as f:
-                #    f.write(f"{list(zip(X, X_pred))}")
             i += 1
 
     fin_loss_total = loss_meter.sum if loss_fn is not None else None
