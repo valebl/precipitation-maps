@@ -63,11 +63,6 @@ parser.add_argument('--no-test_model', dest='test_model', action='store_false')
 parser.add_argument('--model_name', type=str)
 parser.add_argument('--loss_fn', type=str, default="mse_loss")
 parser.add_argument('--net_type', type=str)
-#parser.add_argument('--train_fn', type=str, default="train_model_multigpu")
-#parser.add_argument('--epoch_fn', type=str, default="train_epoch_multigpu_CNN_GNN")
-#parser.add_argument('--test_fn', type=str, default="test_model")
-#parser.add_argument('--dataset_name', type=str, default="Clima_dataset")
-#parser.add_argument('--collate_fn_name', type=str, default="custom_collate_fn")
 parser.add_argument('--performance', type=str, default=None)
 
 if __name__ == '__main__':
@@ -85,7 +80,6 @@ if __name__ == '__main__':
         accelerator = None
 
     Model = getattr(models, args.model_name)
-    #loss_fn = getattr(nn.functional, args.loss_fn)
     train_epoch = getattr(utils, "train_epoch_"+args.net_type)
     test_model = getattr(utils, "test_model_"+args.net_type)
     custom_collate_fn = getattr(dataset, "custom_collate_fn_"+args.net_type)
@@ -198,10 +192,9 @@ if __name__ == '__main__':
     start = time.time()
 
     total_loss, loss_list = train_model(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
-        num_epochs=args.epochs, accelerator=accelerator, log_path=args.output_path, log_file=args.out_log_file, lr_scheduler=scheduler,
-        checkpoint_name=args.output_path+args.out_checkpoint_file, loss_name=args.output_path+args.out_loss_file, train_epoch=train_epoch,
-        ctd_training=args.ctd_training, checkpoint_ctd=args.checkpoint_ctd, performance=args.performance, validationloader=validationloader,
-        validate_model=validate_model, epoch_start=epoch_start, fine_tuning=args.fine_tuning)
+        num_epochs=args.epochs, log_path=args.output_path, log_file=args.out_log_file, train_epoch=train_epoch,
+        validate_model=validate_model, validationloader=validationloader, accelerator=accelerator, lr_scheduler=scheduler
+        checkpoint_name=args.output_path+args.out_checkpoint_file, performance=args.performance, epoch_start=epoch_start)
 
     end = time.time()
 
@@ -212,9 +205,9 @@ if __name__ == '__main__':
     #-- test the model
     if args.test_model:
         test_loss_total, test_loss_avg = test_model(model, testloader, args.output_path, args.out_log_file, accelerator,
-                loss_fn=nn.functional.mse_loss, performance=args.performance)  #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                loss_fn=nn.functional.mse_loss, performance=args.performance) 
 
     if accelerator is None or accelerator.is_main_process:
         with open(args.output_path+args.out_log_file, 'a') as f:
-            f.write(f"\nDONE! :)")
+            f.write(f"\nDONE!")
 
