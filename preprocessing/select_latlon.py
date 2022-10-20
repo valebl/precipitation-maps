@@ -4,11 +4,8 @@ import pickle
 import time
 import sys
 
-#input_path = "/m100_work/ICT22_ESP_0/vblasone/DATA/"
-#output_path = "/m100_work/ICT22_ESP_0/vblasone/DATA/north/"
-
-input_path = "/data/"
-output_path = "/data/north/"
+input_path = "/data/" # change this is needed
+output_path = "/data/north/" # change this if needed
 
 TIME_DIM = 140256
 LON_MIN = 6.5
@@ -47,13 +44,7 @@ j_end = int((lon_max_sel - LON_MIN) / INTERVAL) # int(np.where(lon_era5_list == 
 j_list = np.arange(j_start, j_end, 1)
 
 idx_space_sel = np.array([[i * len(lon_era5_list) + j for j in j_list] for i in i_list])
-#idx_space_sel = idx_space_sel.flatten()
-
-#print(f"\nlat from {lat_era5_list[i_start]} to {lat_era5_list[i_end]}")
-#print(f"\nlon from {lon_era5_list[j_start]} to {lon_era5_list[j_end]}")
-#print(idx_space_sel.shape)
-
-#sys.exit()
+idx_space_sel = idx_space_sel.flatten()
 
 with open(input_path + 'gnn_target.pkl', 'rb') as f:
     target = pickle.load(f)
@@ -64,15 +55,6 @@ with open(output_path + 'log.txt', 'w') as f:
 with open(output_path + 'log.txt', 'a') as f:
     f.write(f"\nLen of target = {len(target.keys())}")
 
-#for i in range(len(lat_era5_list)):
-#    for j in range(len(lon_era5_list)):
-#        idx_space = i * len(lon_era5_list) + j
-#        if idx_space not in idx_space_sel:
-#            for t in range(TIME_DIM):
-#                k = t * 2107 + idx_space
-#                if k in target.keys():
-#                    del target[k]
- 
 target_sel = dict()
 
 for i in i_list:
