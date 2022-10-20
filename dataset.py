@@ -6,16 +6,16 @@ import torch
 from torch.utils.data import Dataset
 from torch.utils.data._utils.collate import default_convert
 
-from torch_geometric.data import Data, Batch
+from torch_geometric.data import Data
 
 class Clima_dataset(Dataset):
 
     def _load_data_into_memory(self, path, input_file, target_file, data_file, idx_file, net_type, mask_file, weights_file):
         with open(path + input_file, 'rb') as f:
-            input = pickle.load(f) # time, features, levels,lat, lon
+            input = pickle.load(f) 
             if self.net_type == "cnn":
                 s = input.shape
-                input = input.reshape(s[0], s[1]*s[2], s[3], s[4]) # time, features*levels, lat, lon
+                input = input.reshape(s[0], s[1]*s[2], s[3], s[4]) 
         with open(path + idx_file,'rb') as f:
             idx_to_key = pickle.load(f)
         if net_type == "cnn" or net_type == "gnn" or net_type == "gru":
@@ -83,7 +83,7 @@ class Clima_dataset(Dataset):
                 edge_index = torch.tensor(self.data[space_idx]['edge_index'])
                 x = torch.tensor(self.data[space_idx]['x'])
                 if self.mask is not None:
-                    mask = torch.tensor(self.mask[k].astype(bool))  #torch.where(y==0, False, True)
+                    mask = torch.tensor(self.mask[k].astype(bool)) 
                     if self.weights is not None:
                         weights = torch.tensor(self.weights[k])
                         data = Data(x=x, edge_index=edge_index, y=y, mask=mask, weights=weights)
@@ -91,8 +91,6 @@ class Clima_dataset(Dataset):
                         data = Data(x=x, edge_index=edge_index, y=y, mask=mask, weights=None)
                 else:
                     data = Data(x=x, edge_index=edge_index, y=y, mask=None, weights=None)
-                #print(y, torch.where(y.squeeze()>=np.log(0.1),1,0))
-                #sys.exit()
                 return input, data
         else:
             return input
@@ -100,7 +98,6 @@ class Clima_dataset(Dataset):
 def custom_collate_fn_ae(batch):
     input = np.array(batch)
     input = default_convert(input)
-    #input.requires_grad = True
     return input
 
 def custom_collate_fn_cnn(batch):
@@ -108,15 +105,12 @@ def custom_collate_fn_cnn(batch):
     y = np.array([item[1] for item in batch])
     input = default_convert(input)
     y = default_convert(y)
-    #input.requires_grad = True
-    #y.requires_grad = True
     return input, y
 
 def custom_collate_fn_gnn(batch):
     input = np.array([item[0] for item in batch])
     data = [item[1] for item in batch]
     input = default_convert(input)
-    #input.requires_grad = True
     return input, data
     
 def custom_collate_fn_gru(batch):
@@ -124,9 +118,6 @@ def custom_collate_fn_gru(batch):
     y = np.array([item[1] for item in batch])
     input = default_convert(input)
     y = default_convert(y)
-    #y = y.to(torch.float32)
-    #input.requires_grad = True
-    #y.requires_grad = True
     return input, y
 
 def custom_collate_fn_get_key(batch):
