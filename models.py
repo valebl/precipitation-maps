@@ -145,7 +145,7 @@ class Classifier(nn.Module):
         return y_pred, data_batch.y.squeeze().to(torch.long), data_batch.batch
 
 
-class CNN_GRU_GNN_regressor(nn.Module):
+class Regressor(nn.Module):
     def __init__(self, input_size=5, input_dim=256, hidden_dim=256, output_dim=256, n_layers=2, hidden_features=256):
         super().__init__()
         self.output_dim = output_dim
