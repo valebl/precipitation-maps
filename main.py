@@ -193,7 +193,7 @@ if __name__ == '__main__':
 
     total_loss, loss_list = train_model(model=model, dataloader=trainloader, loss_fn=loss_fn, optimizer=optimizer,
         num_epochs=args.epochs, log_path=args.output_path, log_file=args.out_log_file, train_epoch=train_epoch,
-        validate_model=validate_model, validationloader=validationloader, accelerator=accelerator, lr_scheduler=scheduler
+        validate_model=validate_model, validationloader=validationloader, accelerator=accelerator, lr_scheduler=scheduler,
         checkpoint_name=args.output_path+args.out_checkpoint_file, performance=args.performance, epoch_start=epoch_start)
 
     end = time.time()
