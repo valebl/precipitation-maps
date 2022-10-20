@@ -4,16 +4,13 @@ import sys
 import pickle
 
 import torch
-import torch.nn as nn
-from torch_geometric.data import Batch
-from torch.optim.lr_scheduler import _LRScheduler, OneCycleLR
-
 
 #------Some useful utilities------
 
 class AverageMeter(object):
     '''
     a generic class to keep track of performance metrics during training or testing of models
+    (from the Deep Learning tutorials of DSSC)
     '''
     def __init__(self):
         self.reset()
@@ -55,16 +52,6 @@ def accuracy(prediction, target):
 
 def weighted_mse_loss(input_batch, target_batch, weights):
     return (weights * (input_batch - target_batch) ** 2).sum() / weights.sum()
-
-def mse_loss_mod(input_batch, target_batch, alpha=0.25,  device='cuda'):
-    return ((input_batch - target_batch) ** 2).sum() / input_batch.shape[0] + alpha * ((torch.log(input_batch+10e-9) - torch.log(target_batch+10e-9)) ** 2).sum() / input_batch.shape[0]
-
-def r2_score(output, target):
-    target_mean = torch.mean(target)
-    ss_tot = torch.sum((target - target_mean) ** 2)
-    ss_res = torch.sum((target - output) ** 2)
-    r2 = 1 - ss_res / ss_tot
-    return r2
 
 
 def load_encoder_checkpoint(model, checkpoint, log_path, log_file, accelerator, fine_tuning=True, net_names=['encoder', 'gru', 'linear']):
@@ -376,7 +363,6 @@ def test_model_gnn(model, dataloader, log_path, log_file, accelerator, loss_fn=N
             if performance is not None:
                 perf = accuracy(y_pred, y)
                 perf_meter.update(perf, X.shape[0])
-                # append results to list
                 _ = [y_pred_list.append(yi) for yi in torch.argmax(y_pred, dim=-1).detach().cpu().numpy()]
             else:
                 _ = [y_pred_list.append(yi) for yi in y_pred.detach().cpu().numpy()]
